@@ -38,31 +38,82 @@ public enum ShortcutAction: String, CaseIterable, Codable, CodingKeyRepresentabl
     }
 }
 
-/// The user's shortcuts. Actions missing from `custom` use their default;
-/// an explicit `nil` means the user turned the shortcut off.
-public struct ShortcutSettings: Codable, Equatable, Sendable {
-    public var custom: [ShortcutAction: KeyCombo?] = [:]
+/// Actions with a default keyboard shortcut.
+public protocol ShortcutActionType: RawRepresentable, CaseIterable, Codable, CodingKeyRepresentable, Hashable, Sendable
+where RawValue == String {
+    var defaultCombo: KeyCombo? { get }
+}
 
-    public init(custom: [ShortcutAction: KeyCombo?] = [:]) {
+extension ShortcutAction: ShortcutActionType {}
+
+/// Shortcuts that only work in the editor window (menu key equivalents).
+public enum EditorAction: String, ShortcutActionType {
+    case copyAndClose
+    case save
+    case saveAs
+    case upload
+    case pin
+    case backdrop
+    case recognizeText
+
+    public var title: String {
+        switch self {
+        case .copyAndClose: "Copiar y cerrar"
+        case .save: "Guardar"
+        case .saveAs: "Guardar como…"
+        case .upload: "Subir y copiar enlace"
+        case .pin: "Fijar encima de todo"
+        case .backdrop: "Fondo y marco"
+        case .recognizeText: "Reconocer texto"
+        }
+    }
+
+    public var defaultCombo: KeyCombo? {
+        let cmd = KeyCombo.command, shift = KeyCombo.shift
+        return switch self {
+        case .copyAndClose: KeyCombo(keyCode: 0x08, modifiers: cmd | shift)   // ⇧⌘C
+        case .save: KeyCombo(keyCode: 0x01, modifiers: cmd)                   // ⌘S
+        case .saveAs: KeyCombo(keyCode: 0x01, modifiers: cmd | shift)         // ⇧⌘S
+        case .upload: KeyCombo(keyCode: 0x20, modifiers: cmd)                 // ⌘U
+        case .pin: KeyCombo(keyCode: 0x23, modifiers: cmd)                    // ⌘P
+        case .backdrop: KeyCombo(keyCode: 0x0B, modifiers: cmd)               // ⌘B
+        case .recognizeText: KeyCombo(keyCode: 0x11, modifiers: cmd | shift)  // ⇧⌘T
+        }
+    }
+}
+
+/// The user's shortcuts for one set of actions. Actions missing from
+/// `custom` use their default; an explicit `nil` means the user turned the
+/// shortcut off.
+public struct ShortcutMap<Action: ShortcutActionType>: Codable, Equatable, Sendable {
+    public var custom: [Action: KeyCombo?] = [:]
+
+    public init(custom: [Action: KeyCombo?] = [:]) {
         self.custom = custom
     }
 
-    public func combo(for action: ShortcutAction) -> KeyCombo? {
+    public func combo(for action: Action) -> KeyCombo? {
         if let value = custom[action] { return value }
         return action.defaultCombo
     }
 
-    public mutating func set(_ combo: KeyCombo?, for action: ShortcutAction) {
+    public mutating func set(_ combo: KeyCombo?, for action: Action) {
         // Assigning a combo takes it away from any other action.
-        if let combo {
-            for other in ShortcutAction.allCases where other != action && self.combo(for: other) == combo {
-                custom[other] = .some(nil)
-            }
-        }
+        if let combo { release(combo, except: action) }
         custom[action] = .some(combo)
     }
 
-    public func action(for combo: KeyCombo) -> ShortcutAction? {
-        ShortcutAction.allCases.first { self.combo(for: $0) == combo }
+    /// Turns off whichever action uses `combo` (used across sets too).
+    public mutating func release(_ combo: KeyCombo, except keep: Action? = nil) {
+        for other in Action.allCases where other != keep && self.combo(for: other) == combo {
+            custom[other] = .some(nil)
+        }
+    }
+
+    public func action(for combo: KeyCombo) -> Action? {
+        Action.allCases.first { self.combo(for: $0) == combo }
     }
 }
+
+public typealias ShortcutSettings = ShortcutMap<ShortcutAction>
+public typealias EditorShortcutSettings = ShortcutMap<EditorAction>

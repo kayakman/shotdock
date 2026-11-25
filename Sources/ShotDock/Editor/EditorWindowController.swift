@@ -125,7 +125,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         model.copyToClipboard()
     }
 
-    /// ⌃⇧C, as in Shottr: copy the edited image and close the editor.
+    /// ⇧⌘C, as in Shottr: copy the edited image and close the editor.
     @objc func copyAndClose(_ sender: Any?) {
         canvas.commitTextEditing()
         guard let image = model.flattened(), Pasteboard.copy(image, scale: model.document.scale) else { return }

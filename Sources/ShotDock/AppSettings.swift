@@ -12,6 +12,7 @@ final class AppSettings {
     @ObservationIgnored private let defaults: UserDefaults
 
     var shortcuts: ShortcutSettings { didSet { save(shortcuts, "shortcuts") } }
+    var editorShortcuts: EditorShortcutSettings { didSet { save(editorShortcuts, "editorShortcuts") } }
     var copyAfterCapture: Bool { didSet { defaults.set(copyAfterCapture, forKey: "copyAfterCapture") } }
     var openEditorAfterCapture: Bool { didSet { defaults.set(openEditorAfterCapture, forKey: "openEditorAfterCapture") } }
     var saveAfterCapture: Bool { didSet { defaults.set(saveAfterCapture, forKey: "saveAfterCapture") } }
@@ -41,6 +42,8 @@ final class AppSettings {
     init(defaults: UserDefaults) {
         self.defaults = defaults
         shortcuts = (defaults.data(forKey: "shortcuts")).flatMap { try? JSONDecoder().decode(ShortcutSettings.self, from: $0) } ?? ShortcutSettings()
+        editorShortcuts = defaults.data(forKey: "editorShortcuts").flatMap { try? JSONDecoder().decode(EditorShortcutSettings.self, from: $0) }
+            ?? EditorShortcutSettings()
         copyAfterCapture = defaults.object(forKey: "copyAfterCapture") as? Bool ?? true
         openEditorAfterCapture = defaults.object(forKey: "openEditorAfterCapture") as? Bool ?? true
         saveAfterCapture = defaults.object(forKey: "saveAfterCapture") as? Bool ?? false

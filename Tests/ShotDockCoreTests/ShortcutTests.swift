@@ -32,3 +32,13 @@ private let shiftCmd = KeyCombo.command | KeyCombo.shift
     #expect(decoded == settings)
     #expect(decoded.combo(for: .captureFullscreen) == nil)
 }
+
+@Test func editorShortcutsDefaultsAndRelease() {
+    var editor = EditorShortcutSettings()
+    #expect(editor.combo(for: .copyAndClose) == KeyCombo(keyCode: 0x08, modifiers: KeyCombo.command | KeyCombo.shift))
+    #expect(editor.combo(for: .copyAndClose)?.modifierSymbols == "⇧⌘")
+    // A combo taken by a global shortcut is released from the editor set.
+    editor.release(KeyCombo(keyCode: 0x01, modifiers: KeyCombo.command))
+    #expect(editor.combo(for: .save) == nil)
+    #expect(editor.combo(for: .saveAs) != nil)
+}

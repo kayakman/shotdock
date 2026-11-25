@@ -1,11 +1,21 @@
 import AppKit
+import ShotDockCore
 
 /// ShotDock has no menu bar of its own (it is a menu bar extra), but its
 /// windows still need ⌘Z, ⌘C, ⌘S… which come from the main menu.
 @MainActor
 enum MainMenu {
-    static func build(target: AppDelegate) -> NSMenu {
+    static func build(target: AppDelegate, editor shortcuts: EditorShortcutSettings) -> NSMenu {
         let main = NSMenu()
+        /// An editor command with the user's shortcut.
+        func editorItem(_ action: EditorAction, _ selector: Selector) -> NSMenuItem {
+            let menuItem = NSMenuItem(title: action.title, action: selector, keyEquivalent: "")
+            if let combo = shortcuts.combo(for: action), let key = KeyComboFormatter.menuKeyEquivalent(combo) {
+                menuItem.keyEquivalent = key.character
+                menuItem.keyEquivalentModifierMask = key.modifiers
+            }
+            return menuItem
+        }
 
         let app = NSMenu(title: "ShotDock")
         app.addItem(item("Acerca de ShotDock", #selector(AppDelegate.showAbout), target: target))
@@ -20,13 +30,13 @@ enum MainMenu {
         file.addItem(item("Capturar área", #selector(AppDelegate.captureArea), target: target))
         file.addItem(item("Capturas recientes", #selector(AppDelegate.showGallery), "y", [.command, .shift], target: target))
         file.addItem(.separator())
-        file.addItem(item("Guardar", #selector(EditorWindowController.saveDocument(_:)), "s"))
-        file.addItem(item("Guardar como…", #selector(EditorWindowController.saveDocumentAs(_:)), "s", [.command, .shift]))
+        file.addItem(editorItem(.save, #selector(EditorWindowController.saveDocument(_:))))
+        file.addItem(editorItem(.saveAs, #selector(EditorWindowController.saveDocumentAs(_:))))
         file.addItem(.separator())
-        file.addItem(item("Subir y copiar enlace", #selector(EditorWindowController.uploadImage(_:)), "u"))
-        file.addItem(item("Fijar encima de todo", #selector(EditorWindowController.pinImage(_:)), "p"))
-        file.addItem(item("Fondo y marco", #selector(EditorWindowController.toggleBackdropPanel(_:)), "b"))
-        file.addItem(item("Reconocer texto", #selector(EditorWindowController.recognizeText(_:)), "t", [.command, .shift]))
+        file.addItem(editorItem(.upload, #selector(EditorWindowController.uploadImage(_:))))
+        file.addItem(editorItem(.pin, #selector(EditorWindowController.pinImage(_:))))
+        file.addItem(editorItem(.backdrop, #selector(EditorWindowController.toggleBackdropPanel(_:))))
+        file.addItem(editorItem(.recognizeText, #selector(EditorWindowController.recognizeText(_:))))
         file.addItem(item("Cerrar", #selector(NSWindow.performClose(_:)), "w"))
         add(file, to: main)
 
@@ -36,7 +46,7 @@ enum MainMenu {
         edit.addItem(.separator())
         edit.addItem(item("Cortar", #selector(NSText.cut(_:)), "x"))
         edit.addItem(item("Copiar", #selector(NSText.copy(_:)), "c"))
-        edit.addItem(item("Copiar y cerrar", #selector(EditorWindowController.copyAndClose(_:)), "c", [.control, .shift]))
+        edit.addItem(editorItem(.copyAndClose, #selector(EditorWindowController.copyAndClose(_:))))
         edit.addItem(item("Pegar", #selector(NSText.paste(_:)), "v"))
         edit.addItem(item("Eliminar", #selector(NSText.delete(_:)), "\u{8}", []))
         edit.addItem(item("Seleccionar todo", #selector(NSText.selectAll(_:)), "a"))

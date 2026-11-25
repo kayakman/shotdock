@@ -23,7 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let selfTest = SelfTest.isRequested
         if selfTest { AppSettings.useSelfTestStore() }
-        NSApp.mainMenu = MainMenu.build(target: self)
+        rebuildMainMenu()
         shortcuts = ShortcutManager(settings: .shared, available: Self.availableActions) { [weak self] in self?.perform($0) }
         DockPresence.shared.start()
         if SelfTest.runIfRequested(app: self) { return }
@@ -32,6 +32,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         shortcuts.registerAll()
         if !ScreenCapturer.hasPermission { ScreenCapturer.requestPermission() }
         offerShottrImportOnce()
+    }
+
+    /// The main menu carries the editor shortcuts, so it follows their settings.
+    private func rebuildMainMenu() {
+        NSApp.mainMenu = MainMenu.build(target: self, editor: AppSettings.shared.editorShortcuts)
+        withObservationTracking { _ = AppSettings.shared.editorShortcuts } onChange: { [weak self] in
+            Task { @MainActor in self?.rebuildMainMenu() }
+        }
     }
 
     func perform(_ action: ShortcutAction) {
@@ -70,10 +78,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let item = NSMenuItem(title: action.title, action: #selector(performMenuAction(_:)), keyEquivalent: "")
             item.representedObject = action.rawValue
             item.target = self
-            if let combo = AppSettings.shared.shortcuts.combo(for: action),
-               let key = KeyComboFormatter.layoutCharacter(combo.keyCode) ?? KeyNames.ansiName(combo.keyCode)?.lowercased() {
-                item.keyEquivalent = key.lowercased()
-                item.keyEquivalentModifierMask = KeyComboFormatter.appKitModifiers(combo.modifiers)
+            if let combo = AppSettings.shared.shortcuts.combo(for: action), let key = KeyComboFormatter.menuKeyEquivalent(combo) {
+                item.keyEquivalent = key.character
+                item.keyEquivalentModifierMask = key.modifiers
             }
             menu.addItem(item)
         }
@@ -142,7 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func openPreferences(tab: PreferencesTab?) {
         if preferences == nil { preferences = PreferencesWindowController(settings: .shared, shortcuts: shortcuts) }
-        if let tab { preferences?.state.tab = tab }
+        if let tab { preferences?.select(tab) }
         preferences?.show()
     }
 

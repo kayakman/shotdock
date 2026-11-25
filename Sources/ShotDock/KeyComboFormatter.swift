@@ -31,6 +31,27 @@ enum KeyComboFormatter {
         }
     }
 
+    /// Key equivalent for an NSMenuItem.
+    static func menuKeyEquivalent(_ combo: KeyCombo) -> (character: String, modifiers: NSEvent.ModifierFlags)? {
+        let special: [Int: Int] = [
+            0x24: 0x0D, 0x30: 0x09, 0x31: 0x20, 0x33: 0x08, 0x35: 0x1B, 0x75: NSDeleteFunctionKey,
+            0x7B: NSLeftArrowFunctionKey, 0x7C: NSRightArrowFunctionKey, 0x7D: NSDownArrowFunctionKey, 0x7E: NSUpArrowFunctionKey,
+            0x73: NSHomeFunctionKey, 0x77: NSEndFunctionKey, 0x74: NSPageUpFunctionKey, 0x79: NSPageDownFunctionKey,
+        ]
+        let functionKeys = [0x7A, 0x78, 0x63, 0x76, 0x60, 0x61, 0x62, 0x64, 0x65, 0x6D, 0x67, 0x6F, 0x69, 0x6B, 0x71, 0x6A, 0x40, 0x4F, 0x50, 0x5A]
+        let character: String
+        if let code = special[combo.keyCode], let scalar = Unicode.Scalar(code) {
+            character = String(Character(scalar))
+        } else if let index = functionKeys.firstIndex(of: combo.keyCode), let scalar = Unicode.Scalar(NSF1FunctionKey + index) {
+            character = String(Character(scalar))
+        } else if let typed = layoutCharacter(combo.keyCode) ?? KeyNames.ansiName(combo.keyCode) {
+            character = typed.lowercased()
+        } else {
+            return nil
+        }
+        return (character, appKitModifiers(combo.modifiers))
+    }
+
     /// Carbon modifiers from an AppKit event.
     static func carbonModifiers(_ flags: NSEvent.ModifierFlags) -> Int {
         var modifiers = 0

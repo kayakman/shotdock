@@ -237,18 +237,18 @@ final class SelfTest {
         try ImageEncoding.write(flat, to: output, scale: 2)
         note("wrote \(output.path)")
 
-        // ⌃⇧C: a main-menu shortcut whose action the editor handles. (A synthetic key press
+        // ⇧⌘C: a main-menu shortcut whose action the editor handles. (A synthetic key press
         // only reaches the editor when ShotDock is the active app, which a selftest cannot force.)
         let menuItem = NSApp.mainMenu?.items.compactMap(\.submenu).flatMap(\.items)
             .first { $0.action == #selector(EditorWindowController.copyAndClose(_:)) }
-        check(menuItem?.keyEquivalent == "c" && menuItem?.keyEquivalentModifierMask == [.control, .shift], "⌃⇧C is in the Edit menu")
+        check(menuItem?.keyEquivalent == "c" && menuItem?.keyEquivalentModifierMask == [.command, .shift], "⇧⌘C is in the Edit menu")
         check(editor.responds(to: #selector(EditorWindowController.copyAndClose(_:))), "the editor handles it")
         NSPasteboard.general.clearContents()
         editor.copyAndClose(nil)
         try await Task.sleep(for: .milliseconds(300))
         let copied = NSPasteboard.general.data(forType: .png).flatMap { try? ImageEncoding.image(from: $0) }
-        check(copied?.width == 950 && copied?.height == 650, "⌃⇧C copies the edited image")
-        check(app.coordinator.editors.isEmpty && !window.isVisible, "⌃⇧C closes the editor and releases it")
+        check(copied?.width == 950 && copied?.height == 650, "⇧⌘C copies the edited image")
+        check(app.coordinator.editors.isEmpty && !window.isVisible, "⇧⌘C closes the editor and releases it")
     }
 
     /// Asset catalog resources: menu bar template, logo in both appearances,
@@ -535,7 +535,7 @@ final class SelfTest {
 
         app.openPreferences(tab: .upload)
         try await Task.sleep(for: .milliseconds(500))
-        if let window = NSApp.windows.first(where: { $0.title == "Preferencias de ShotDock" }) {
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "preferences" }) {
             try await snapshot(window, to: sibling("prefs-upload"))
         }
     }
@@ -785,8 +785,14 @@ final class SelfTest {
         let settings = AppSettings.shared
         app.showPreferences()
         try await Task.sleep(for: .milliseconds(500))
-        guard let window = NSApp.windows.first(where: { $0.title == "Preferencias de ShotDock" }) else { return fail("no preferences window") }
-        render(window.contentView!.superview!, to: sibling("general"))
+        guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "preferences" }) else { return fail("no preferences window") }
+        check(window.title == "General" && window.toolbar != nil, "preferences open on General with toolbar tabs")
+        for tab in PreferencesTab.allCases {
+            app.openPreferences(tab: tab)
+            try await Task.sleep(for: .milliseconds(400))
+            check(window.title == tab.title, "tab \(tab.title) selected and titled")
+            try await snapshot(window, to: sibling("pane-\(tab.rawValue)"))
+        }
 
         // A Shottr file with the values found on the developer's Mac.
         let plist: [String: Any] = [
@@ -825,7 +831,26 @@ final class SelfTest {
         let recorded = ShortcutAction.allCases.first { settings.shortcuts.combo(for: $0) == KeyCombo(keyCode: 2, modifiers: KeyCombo.control | KeyCombo.option) }
         check(recorded != nil, "recorded ⌃⌥D for \(recorded?.title ?? "nothing")")
         check(app.shortcuts.failed.isEmpty, "hotkeys re-registered after the change")
-        render(window.contentView!.superview!, to: sibling("shortcuts"))
+
+        // Editor shortcuts: ⇧⌘C by default, configurable, reflected in the main menu.
+        func menuItem(_ selector: Selector) -> NSMenuItem? {
+            NSApp.mainMenu?.items.compactMap(\.submenu).flatMap(\.items).first { $0.action == selector }
+        }
+        let copyClose = #selector(EditorWindowController.copyAndClose(_:))
+        check(menuItem(copyClose)?.keyEquivalent == "c" && menuItem(copyClose)?.keyEquivalentModifierMask == [.command, .shift],
+              "Copiar y cerrar is ⇧⌘C in the menu")
+        settings.editorShortcuts.set(KeyCombo(keyCode: 0x08, modifiers: KeyCombo.command | KeyCombo.option), for: .copyAndClose)
+        try await Task.sleep(for: .milliseconds(200))
+        check(menuItem(copyClose)?.keyEquivalentModifierMask == [.command, .option], "changing it updates the menu (⌥⌘C)")
+        // Giving ⌥⌘C to a global shortcut takes it away from the editor.
+        settings.editorShortcuts.release(KeyCombo(keyCode: 0x08, modifiers: KeyCombo.command | KeyCombo.option))
+        settings.shortcuts.set(KeyCombo(keyCode: 0x08, modifiers: KeyCombo.command | KeyCombo.option), for: .pickColor)
+        try await Task.sleep(for: .milliseconds(200))
+        check(settings.editorShortcuts.combo(for: .copyAndClose) == nil && menuItem(copyClose)?.keyEquivalent == "",
+              "a combo has one use across global and editor shortcuts")
+        settings.editorShortcuts = EditorShortcutSettings()
+        try await Task.sleep(for: .milliseconds(200))
+        check(menuItem(copyClose)?.keyEquivalentModifierMask == [.command, .shift], "reset restores ⇧⌘C")
     }
 
     private static func find<T: NSView>(_ type: T.Type, in view: NSView) -> [T] {
