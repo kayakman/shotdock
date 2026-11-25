@@ -49,7 +49,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             onSave: { [weak self] in self?.saveDocument(nil) },
             onPin: { [weak self] in self?.pinImage(nil) },
             onRecognize: { [weak self] in self?.recognizeText(nil) },
-            onBackdrop: { [weak self] in self?.toggleBackdropPanel(nil) }))
+            onBackdrop: { [weak self] in self?.toggleBackdropPanel(nil) },
+            onUpload: { [weak self] in self?.uploadImage(nil) }))
         toolbar.translatesAutoresizingMaskIntoConstraints = false
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -155,6 +156,17 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
                 NSAlert(error: error).beginSheetModal(for: window)
             }
         }
+    }
+
+    /// ⌘U: uploads the edited image and copies its link.
+    @objc func uploadImage(_ sender: Any?) {
+        canvas.commitTextEditing()
+        guard let image = model.flattened() else { return }
+        guard Uploader.isConfigured else {
+            (NSApp.delegate as? AppDelegate)?.openPreferences(tab: .upload)
+            return
+        }
+        coordinator?.upload(image, scale: model.document.scale, date: model.document.createdAt, libraryItem: libraryItemID)
     }
 
     /// Shows or hides the backdrop panel; showing it turns the backdrop on.

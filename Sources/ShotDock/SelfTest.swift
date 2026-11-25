@@ -42,6 +42,7 @@ final class SelfTest {
             case "history": try await history()
             case "pin-ocr": try await pinAndOCR()
             case "backdrop": try await backdrop()
+            case "upload": try await upload()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -356,6 +357,65 @@ final class SelfTest {
         if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
         try await Task.sleep(for: .milliseconds(200))
         check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// Uploads to scripts/mock-s3.py on port 9555 (start it first).
+    private func upload() async throws {
+        let settings = AppSettings.shared
+        var config = S3Configuration()
+        config.provider = .minio
+        config.endpoint = "http://127.0.0.1:9555"
+        config.region = "eu-west-1"
+        config.bucket = "capturas"
+        config.prefix = "shotdock"
+        config.pathStyle = true
+        config.linkMode = .presigned
+        config.presignExpiry = 3600
+        settings.s3 = config
+        defer { Keychain.saveS3Credentials(nil) }
+        check(Keychain.saveS3Credentials(S3Credentials(accessKeyID: "test", secretAccessKey: "testsecret")), "keys saved in the keychain")
+        check(Keychain.loadS3Credentials()?.secretAccessKey == "testsecret", "keys read back from the keychain")
+        check(Uploader.isConfigured, "upload configured")
+
+        let key = try await Uploader.testConnection()
+        note("test connection uploaded and deleted \(key)")
+
+        // A capture with "upload after capture" on: the link lands on the clipboard.
+        settings.uploadAfterCapture = true
+        settings.openEditorAfterCapture = false
+        settings.copyAfterCapture = true
+        NSPasteboard.general.clearContents()
+        let image = Self.testPattern(width: 640, height: 400, text: "Subida")
+        app.coordinator.finish(CaptureDocument(image: image, scale: 2))
+        let started = Date()
+        while NSPasteboard.general.string(forType: .string) == nil, Date().timeIntervalSince(started) < 10 {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        guard let linkString = NSPasteboard.general.string(forType: .string), let link = URL(string: linkString) else {
+            return fail("no link on the clipboard")
+        }
+        note("link: \(linkString.prefix(110))…")
+        check(linkString.contains("/capturas/shotdock/shotdock-") && linkString.contains("X-Amz-Signature="), "presigned link to the object")
+        let (data, response) = try await URLSession.shared.data(from: link)
+        let downloaded = try? ImageEncoding.image(from: data)
+        check((response as? HTTPURLResponse)?.statusCode == 200 && downloaded?.width == 640, "the link downloads the PNG (\(downloaded?.width ?? 0) px)")
+        try await Task.sleep(for: .milliseconds(200))
+        check(LibraryStore.shared.items.first?.uploadedURL == linkString, "history remembers the link")
+
+        // Wrong keys: a clear error, nothing copied.
+        Keychain.saveS3Credentials(S3Credentials(accessKeyID: "test", secretAccessKey: "wrong"))
+        do {
+            try await Uploader.upload(image, scale: 2, date: Date(), libraryItem: nil)
+            fail("upload with a wrong secret succeeded")
+        } catch {
+            check(error.localizedDescription.contains("SignatureDoesNotMatch"), "wrong secret: \(error.localizedDescription)")
+        }
+
+        app.openPreferences(tab: .upload)
+        try await Task.sleep(for: .milliseconds(500))
+        if let window = NSApp.windows.first(where: { $0.title == "Preferencias de ShotDock" }) {
+            try await snapshot(window, to: sibling("prefs-upload"))
+        }
     }
 
     /// The backdrop panel: on/off, presets, live sliders with one undo step.

@@ -3,7 +3,7 @@ SIGN_IDENTITY ?= ShotDock Local Signing
 APP           := build/ShotDock.app
 BIN_DIR        = $(shell swift build -c $(CONFIG) --show-bin-path)
 
-.PHONY: build app run test selftest signing-cert icons clean
+.PHONY: build app run test selftest selftest-upload signing-cert icons clean
 
 build:
 	swift build -c $(CONFIG)
@@ -45,3 +45,8 @@ signing-cert:
 
 clean:
 	rm -rf build .build
+
+# Upload selftest against the local mock S3 server.
+selftest-upload: app
+	@python3 -I scripts/mock-s3.py --port 9555 > build/mock-s3.log 2>&1 & echo $$! > build/mock-s3.pid; sleep 1; \
+	$(MAKE) selftest TEST=upload; status=$$?; kill `cat build/mock-s3.pid`; rm -f build/mock-s3.pid; exit $$status

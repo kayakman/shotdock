@@ -75,6 +75,19 @@ struct GalleryActions {
         }
     }
 
+    func upload(_ id: UUID) {
+        guard let document = store.document(id), let image = document.flattened() else { return }
+        guard Uploader.isConfigured else { return (NSApp.delegate as? AppDelegate)?.openPreferences(tab: .upload) ?? () }
+        coordinator.upload(image, scale: document.scale, date: document.createdAt, libraryItem: id)
+    }
+
+    func copyLink(_ item: CaptureItem) {
+        guard let link = item.uploadedURL else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(link, forType: .string)
+        HUD.show("Enlace copiado", symbol: "link")
+    }
+
     func pin(_ id: UUID) {
         guard let document = store.document(id), let image = document.flattened() else { return }
         coordinator.pin(image, scale: document.scale)
@@ -191,6 +204,10 @@ struct GalleryView: View {
         Button("Abrir en el editor") { actions.open([item.id]) }
         Button("Copiar") { actions.copy(item.id) }
         Button("Guardar en la carpeta") { actions.save(item.id) }
+        Button("Subir y copiar enlace") { actions.upload(item.id) }
+        if item.uploadedURL != nil {
+            Button("Copiar enlace") { actions.copyLink(item) }
+        }
         Button("Fijar encima de todo") { actions.pin(item.id) }
         Button("Reconocer texto") { actions.recognize(item.id) }
         if item.savedPath != nil {
@@ -236,6 +253,9 @@ private struct GalleryCell: View {
                 Spacer(minLength: 4)
                 if item.savedPath != nil {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(.secondary).help("Guardada")
+                }
+                if item.uploadedURL != nil {
+                    Image(systemName: "link").foregroundStyle(.secondary).help("Subida")
                 }
                 if item.annotationCount > 0 {
                     Image(systemName: "pencil.tip.crop.circle").foregroundStyle(.secondary).help("Con anotaciones")

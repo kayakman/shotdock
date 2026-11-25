@@ -76,3 +76,43 @@ public extension ShortcutSettings {
         }
     }
 }
+
+public extension ShottrImport {
+    /// Shottr's S3 upload settings (bucket, endpoint, region, prefix, public
+    /// URL, link mode). Its keys live in Shottr's keychain and are not read.
+    static func s3Configuration(_ preferences: [String: Any]) -> S3Configuration? {
+        func string(_ key: String) -> String? {
+            (preferences[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        }
+        guard let bucket = string("uploadS3Bucket") else { return nil }
+        var config = S3Configuration()
+        config.bucket = bucket
+        config.region = string("uploadS3Region") ?? config.region
+        if let endpoint = string("uploadS3Endpoint") {
+            config.endpoint = endpoint.contains("://") ? endpoint : "https://" + endpoint
+        } else {
+            config.endpoint = S3Configuration.Provider.aws.defaultEndpoint(region: config.region)
+        }
+        let host = URL(string: config.endpoint)?.host ?? ""
+        config.provider = host.hasSuffix("r2.cloudflarestorage.com") ? .r2
+            : host.contains("backblazeb2.com") ? .b2
+            : host.hasSuffix("amazonaws.com") ? .aws : .custom
+        config.pathStyle = config.provider.usesPathStyle
+        config.prefix = string("uploadS3Prefix") ?? ""
+        config.publicBaseURL = string("uploadS3PublicUrl") ?? ""
+        if let mode = string("uploadS3SharingMode")?.lowercased() {
+            config.linkMode = mode.contains("sign") || mode.contains("private") ? .presigned : .publicURL
+        } else {
+            config.linkMode = config.publicBaseURL.isEmpty ? .presigned : .publicURL
+        }
+        if let expiry = preferences["uploadS3PresignExpiration"] as? Int, expiry > 0 {
+            // Shottr stores it in seconds, minutes or days depending on the version; S3 caps it at 7 days.
+            config.presignExpiry = min(expiry < 1000 ? expiry * 86400 : expiry, 604_800)
+        }
+        return config
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}

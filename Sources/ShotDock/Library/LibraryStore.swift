@@ -60,6 +60,11 @@ final class LibraryStore {
         refresh()
     }
 
+    func markUploaded(_ id: UUID, link: URL) {
+        try? library?.markUploaded(id, link: link)
+        refresh()
+    }
+
     func delete(_ ids: Set<UUID>) {
         ids.forEach { pendingSaves[$0]?.cancel(); thumbnails[$0] = nil }
         try? library?.delete(ids)

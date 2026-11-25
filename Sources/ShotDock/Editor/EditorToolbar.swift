@@ -7,6 +7,7 @@ struct EditorToolbar: View {
     var onPin: () -> Void = {}
     var onRecognize: () -> Void = {}
     var onBackdrop: () -> Void = {}
+    var onUpload: () -> Void = {}
 
     private var customColor: Binding<Color> {
         Binding(get: { Color(cgColor: model.color.cgColor) },
@@ -65,6 +66,11 @@ struct EditorToolbar: View {
                 Image(systemName: "text.viewfinder")
             }
             .help("Reconocer texto y códigos QR")
+
+            Button(action: onUpload) {
+                Image(systemName: "icloud.and.arrow.up")
+            }
+            .help("Subir y copiar el enlace (⌘U)")
 
             Button(action: onPin) {
                 Image(systemName: "pin")

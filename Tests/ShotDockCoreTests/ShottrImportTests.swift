@@ -43,3 +43,18 @@ private let shiftCmd = KeyCombo.command | KeyCombo.shift
     #expect(settings.combo(for: .captureFullscreen) == nil)
     #expect(settings.combo(for: .captureArea) != nil)
 }
+
+@Test func importsShottrS3Settings() throws {
+    let config = try #require(ShottrImport.s3Configuration([
+        "uploadS3Bucket": "capturas",
+        "uploadS3Endpoint": "https://abc123.r2.cloudflarestorage.com",
+        "uploadS3Region": "auto",
+        "uploadS3Prefix": "shots/",
+        "uploadS3PublicUrl": "https://img.example.com",
+        "uploadS3SharingMode": "public",
+    ]))
+    #expect(config.provider == .r2 && config.pathStyle)
+    #expect(config.linkMode == .publicURL)
+    #expect(config.objectURL(key: config.key(for: "a.png"))?.absoluteString == "https://abc123.r2.cloudflarestorage.com/capturas/shots/a.png")
+    #expect(ShottrImport.s3Configuration(["uploadS3Bucket": ""]) == nil)
+}

@@ -27,15 +27,23 @@ enum ShottrImporter {
     static func importFile(_ url: URL, into settings: AppSettings, parent: NSWindow?) {
         let alert = NSAlert()
         do {
-            let result = try ShottrImport.parse(plistData: Data(contentsOf: url))
-            guard !result.shortcuts.isEmpty else {
+            let data = try Data(contentsOf: url)
+            let result = try ShottrImport.parse(plistData: data)
+            let preferences = (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any] ?? [:]
+            let s3 = ShottrImport.s3Configuration(preferences)
+            if let s3 { settings.s3 = s3 }
+            guard !result.shortcuts.isEmpty || s3 != nil else {
                 alert.messageText = "No hay atajos que importar"
                 alert.informativeText = "Ese fichero no tiene atajos de Shottr configurados."
                 return present(alert, parent)
             }
             settings.shortcuts.apply(result)
-            alert.messageText = "Atajos de Shottr importados"
-            alert.informativeText = summary(of: result)
+            alert.messageText = "Configuración de Shottr importada"
+            var text = summary(of: result)
+            if let s3 {
+                text += "\n\nSubida: bucket «\(s3.bucket)» en \(s3.provider.title). Las claves no se pueden leer de Shottr: escríbelas en Preferencias › Subida."
+            }
+            alert.informativeText = text
         } catch {
             alert.messageText = "No se pudo leer la configuración de Shottr"
             alert.informativeText = error.localizedDescription

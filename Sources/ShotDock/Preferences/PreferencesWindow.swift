@@ -2,7 +2,7 @@ import AppKit
 import ShotDockCore
 import SwiftUI
 
-enum PreferencesTab: Hashable { case general, shortcuts }
+enum PreferencesTab: Hashable { case general, shortcuts, upload }
 
 @MainActor
 @Observable
@@ -49,6 +49,9 @@ struct PreferencesView: View {
             ShortcutPreferences(settings: settings, manager: shortcutManager, window: window)
                 .tabItem { Label("Atajos", systemImage: "command") }
                 .tag(PreferencesTab.shortcuts)
+            UploadPreferences(settings: settings, window: window)
+                .tabItem { Label("Subida", systemImage: "icloud.and.arrow.up") }
+                .tag(PreferencesTab.upload)
         }
         .frame(width: 580, height: 640)
         .padding(20)
@@ -69,6 +72,9 @@ private struct GeneralPreferences: View {
                 Toggle("Copiar al portapapeles", isOn: $settings.copyAfterCapture)
                 Toggle("Abrir el editor", isOn: $settings.openEditorAfterCapture)
                 Toggle("Guardar automáticamente", isOn: $settings.saveAfterCapture)
+                Toggle("Subir y copiar el enlace", isOn: $settings.uploadAfterCapture)
+                    .disabled(!settings.s3.isComplete)
+                    .help("Configúralo en la pestaña Subida")
             }
             Section("Guardar") {
                 LabeledContent("Carpeta") {

@@ -27,6 +27,8 @@ final class AppSettings {
     var ocrJoinLines: Bool { didSet { defaults.set(ocrJoinLines, forKey: "ocrJoinLines") } }
     /// The backdrop used last, offered when the backdrop is turned on.
     var lastBackdrop: Backdrop { didSet { save(lastBackdrop, "lastBackdrop") } }
+    var s3: S3Configuration { didSet { save(s3, "s3") } }
+    var uploadAfterCapture: Bool { didSet { defaults.set(uploadAfterCapture, forKey: "uploadAfterCapture") } }
     /// Last selected area in AppKit global coordinates, for "repeat area".
     var lastArea: CGRect? {
         didSet { lastArea.map { defaults.set(NSStringFromRect($0), forKey: "lastArea") } ?? defaults.removeObject(forKey: "lastArea") }
@@ -47,6 +49,8 @@ final class AppSettings {
         colorFormat = defaults.string(forKey: "colorFormat").flatMap(ColorFormat.init(rawValue:)) ?? .hex
         historyLimit = defaults.object(forKey: "historyLimit") as? Int ?? 200
         ocrJoinLines = defaults.object(forKey: "ocrJoinLines") as? Bool ?? false
+        s3 = defaults.data(forKey: "s3").flatMap { try? JSONDecoder().decode(S3Configuration.self, from: $0) } ?? S3Configuration()
+        uploadAfterCapture = defaults.object(forKey: "uploadAfterCapture") as? Bool ?? false
         lastBackdrop = defaults.data(forKey: "lastBackdrop").flatMap { try? JSONDecoder().decode(Backdrop.self, from: $0) } ?? Backdrop()
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
     }
@@ -59,6 +63,7 @@ final class AppSettings {
         let library = FileManager.default.temporaryDirectory.appendingPathComponent("ShotDock Selftest Library")
         try? FileManager.default.removeItem(at: library)
         LibraryStore.shared = LibraryStore(root: library)
+        Keychain.service = "app.shotdock.ShotDock.s3.selftest"
     }
 
     private func save<T: Encodable>(_ value: T, _ key: String) {

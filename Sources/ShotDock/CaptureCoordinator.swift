@@ -145,10 +145,23 @@ final class CaptureCoordinator {
                 showError(error)
             }
         }
+        if settings.uploadAfterCapture {
+            upload(document.image, scale: document.scale, date: document.createdAt, libraryItem: itemID)
+        }
         if settings.openEditorAfterCapture {
             openEditor(with: document, libraryItem: itemID)
         } else if !done.isEmpty {
             HUD.show(done.joined(separator: " · "), symbol: "checkmark.circle.fill")
+        }
+    }
+
+    func upload(_ image: CGImage, scale: CGFloat, date: Date, libraryItem: UUID?) {
+        Task {
+            do {
+                try await Uploader.upload(image, scale: scale, date: date, libraryItem: libraryItem)
+            } catch {
+                showError(error)
+            }
         }
     }
 

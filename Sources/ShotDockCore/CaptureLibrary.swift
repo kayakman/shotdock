@@ -13,6 +13,8 @@ public struct CaptureItem: Codable, Identifiable, Equatable, Sendable {
     public var annotationCount: Int
     /// Where it was last saved, if it was.
     public var savedPath: String?
+    /// Link of the last upload.
+    public var uploadedURL: String?
 }
 
 /// The history of captures ("the dock"): every capture is kept with its
@@ -65,7 +67,7 @@ public final class CaptureLibrary {
         try ImageEncoding.write(document.image, to: originalURL(id), scale: document.scale)
         var item = CaptureItem(id: id, createdAt: document.createdAt, scale: document.scale,
                                pixelWidth: document.image.width, pixelHeight: document.image.height,
-                               annotationCount: 0, savedPath: nil)
+                               annotationCount: 0, savedPath: nil, uploadedURL: nil)
         try writeDocumentState(document, item: &item)
         items.insert(item, at: 0)
         items.sort { $0.createdAt > $1.createdAt }
@@ -85,6 +87,12 @@ public final class CaptureLibrary {
     public func markSaved(_ id: UUID, at url: URL) throws {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].savedPath = url.path
+        try saveIndex()
+    }
+
+    public func markUploaded(_ id: UUID, link: URL) throws {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].uploadedURL = link.absoluteString
         try saveIndex()
     }
 
