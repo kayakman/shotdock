@@ -7,9 +7,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let model: EditorModel
     let canvas: CanvasView
     private let scrollView = NSScrollView()
+    private weak var coordinator: CaptureCoordinator?
     var onClose: ((EditorWindowController) -> Void)?
 
-    init(document: CaptureDocument) {
+    init(document: CaptureDocument, coordinator: CaptureCoordinator? = nil) {
+        self.coordinator = coordinator
         model = EditorModel(document: document)
         canvas = CanvasView(model: model)
         let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 640, height: 480),
@@ -92,17 +94,32 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         model.copyToClipboard()
     }
 
+    /// ⌘S: straight to the folder and name pattern from the preferences.
     @objc func saveDocument(_ sender: Any?) {
         canvas.commitTextEditing()
+        guard let coordinator, let image = model.flattened() else { return saveDocumentAs(sender) }
+        do {
+            let url = try coordinator.save(image, scale: model.document.scale, date: model.document.createdAt)
+            model.flash("Guardado: \(url.lastPathComponent)")
+        } catch {
+            window.map { NSAlert(error: error).beginSheetModal(for: $0) }
+        }
+    }
+
+    /// ⇧⌘S: asks where.
+    @objc func saveDocumentAs(_ sender: Any?) {
+        canvas.commitTextEditing()
         guard let window, let image = model.flattened() else { return }
+        let settings = AppSettings.shared
+        let format = settings.imageFormat
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [.png]
-        panel.nameFieldStringValue = CaptureNaming.defaultName(for: model.document.createdAt) + ".png"
-        panel.directoryURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+        panel.allowedContentTypes = [format == .png ? .png : .jpeg]
+        panel.nameFieldStringValue = settings.autoSaveURL(for: model.document.createdAt).lastPathComponent
+        panel.directoryURL = settings.saveFolder
         panel.beginSheetModal(for: window) { [model] response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                try ImageEncoding.write(image, to: url, scale: model.document.scale)
+                try ImageEncoding.write(image, to: url, format: format, scale: model.document.scale)
                 model.flash("Guardado")
             } catch {
                 NSAlert(error: error).beginSheetModal(for: window)

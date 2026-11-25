@@ -16,6 +16,8 @@ final class SelfTest {
         self.output = output
     }
 
+    static var isRequested: Bool { CommandLine.arguments.contains("--selftest") }
+
     static func runIfRequested(app: AppDelegate) -> Bool {
         let args = CommandLine.arguments
         guard let index = args.firstIndex(of: "--selftest"), args.count > index + 2 else { return false }
@@ -32,6 +34,8 @@ final class SelfTest {
             case "area": try await area()
             case "editor": try await editor()
             case "branding": try await branding()
+            case "modes": try await modes()
+            case "prefs": try await prefs()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -234,6 +238,137 @@ final class SelfTest {
                 try? rep.representation(using: .png, properties: [:])?.write(to: sibling("menubar"))
             }
         }
+    }
+
+    /// Every capture mode against the real screen, plus auto-save.
+    private func modes() async throws {
+        guard ScreenCapturer.hasPermission else { throw ScreenCaptureError.permissionDenied }
+        let coordinator = app.coordinator
+        let settings = AppSettings.shared
+        let folder = output.deletingLastPathComponent().appendingPathComponent("selftest-saved")
+        try? FileManager.default.removeItem(at: folder)
+        settings.saveFolder = folder
+        settings.saveAfterCapture = true
+        settings.filenameTemplate = "prueba {n}"
+
+        // Full screen: the display under the pointer.
+        coordinator.captureFullscreen()
+        try await Task.sleep(for: .seconds(1))
+        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }!
+        if let editor = coordinator.editors.last {
+            let image = editor.model.document.image
+            check(CGFloat(image.width) == screen.frame.width * screen.backingScaleFactor, "full screen \(image.width)x\(image.height)")
+            editor.close()
+        } else { fail("full screen did not open an editor") }
+        let saved = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        check(saved == ["prueba 1.png"], "auto-saved with the name template (\(saved))")
+
+        // Area, then repeat it without selecting.
+        settings.saveAfterCapture = false
+        let snapshots = try await ScreenCapturer.snapshotAllDisplays()
+        coordinator.beginSelection(over: snapshots)
+        try await Task.sleep(for: .milliseconds(300))
+        guard let view = coordinator.selection?.selectionViews.first(where: { $0.snapshot.displayID == CGMainDisplayID() }),
+              let window = view.window else { return fail("no overlay") }
+        drag(from: view.convert(CGPoint(x: 200, y: 200), to: nil), to: view.convert(CGPoint(x: 450, y: 350), to: nil), in: window)
+        try await Task.sleep(for: .milliseconds(300))
+        let first = coordinator.editors.last?.model.document.image
+        coordinator.editors.last?.close()
+        check(settings.lastArea?.size == CGSize(width: 250, height: 150), "last area remembered (\(String(describing: settings.lastArea)))")
+        coordinator.repeatArea()
+        try await Task.sleep(for: .seconds(1))
+        let repeated = coordinator.editors.last?.model.document.image
+        check(repeated != nil && repeated?.width == first?.width && repeated?.height == first?.height,
+              "repeat area captures the same size (\(repeated?.width ?? 0)x\(repeated?.height ?? 0))")
+        coordinator.editors.last?.close()
+
+        // Pick a window by hovering and clicking it.
+        let windows = try await ScreenCapturer.pickableWindows()
+        note("pickable windows: \(windows.count), front: \(windows.first?.title ?? "-")")
+        if let target = windows.first(where: { w in NSScreen.screens.contains { $0.frame.contains(w.frame) } }) {
+            coordinator.beginSelection(over: snapshots, windows: windows, mode: .window)
+            try await Task.sleep(for: .milliseconds(300))
+            let center = CGPoint(x: target.frame.midX, y: target.frame.midY)
+            guard let view = coordinator.selection?.selectionViews.first(where: { $0.snapshot.frame.contains(center) }),
+                  let overlay = view.window else { return fail("no overlay for window mode") }
+            let inWindow = overlay.convertPoint(fromScreen: center)
+            send(.mouseMoved, at: inWindow, to: overlay)
+            check(coordinator.selection?.hoveredWindow?.window.windowID == windows.first { $0.frame.contains(center) }?.window.windowID,
+                  "hover highlights the window under the pointer")
+            render(view, to: sibling("window-pick"))
+            send(.leftMouseDown, at: inWindow, to: overlay)
+            send(.leftMouseUp, at: inWindow, to: overlay)
+            try await Task.sleep(for: .seconds(1))
+            if let editor = coordinator.editors.last {
+                let image = editor.model.document.image
+                let picked = windows.first { $0.frame.contains(center) }!
+                let expected = picked.frame.width * editor.model.document.scale
+                check(CGFloat(image.width) >= expected, "window captured \(image.width)x\(image.height) for a \(Int(picked.frame.width)) pt wide window")
+                try ImageEncoding.write(image, to: sibling("window"), scale: editor.model.document.scale)
+                editor.close()
+            } else { fail("window pick did not open an editor") }
+        }
+
+        // Delayed capture: countdown, then the overlay; Esc cancels.
+        settings.captureDelay = 1
+        coordinator.captureDelayed()
+        try await Task.sleep(for: .milliseconds(2200))
+        check(coordinator.selection != nil, "delayed capture shows the overlay after the countdown")
+        if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
+        try await Task.sleep(for: .milliseconds(200))
+        check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// Preferences window, shortcut recorder and the Shottr import.
+    private func prefs() async throws {
+        let settings = AppSettings.shared
+        app.showPreferences()
+        try await Task.sleep(for: .milliseconds(500))
+        guard let window = NSApp.windows.first(where: { $0.title == "Preferencias de ShotDock" }) else { return fail("no preferences window") }
+        render(window.contentView!.superview!, to: sibling("general"))
+
+        // A Shottr file with the values found on the developer's Mac.
+        let plist: [String: Any] = [
+            "KeyboardShortcuts_area": #"{"carbonModifiers":768,"carbonKeyCode":23}"#,
+            "KeyboardShortcuts_repeatArea": #"{"carbonKeyCode":23,"carbonModifiers":2816}"#,
+            "KeyboardShortcuts_window": #"{"carbonKeyCode":19,"carbonModifiers":768}"#,
+            "KeyboardShortcuts_anyWindow": #"{"carbonModifiers":768,"carbonKeyCode":20}"#,
+            "KeyboardShortcuts_fullscreen": #"{"carbonModifiers":768,"carbonKeyCode":21}"#,
+            "KeyboardShortcuts_ocr": #"{"carbonModifiers":6400,"carbonKeyCode":31}"#,
+        ]
+        let file = output.deletingLastPathComponent().appendingPathComponent("selftest-shottr.plist")
+        try PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0).write(to: file)
+        let result = try ShottrImport.parse(plistData: Data(contentsOf: file))
+        note("import summary:\n" + ShottrImporter.summary(of: result))
+        settings.shortcuts.apply(result)
+        try await Task.sleep(for: .milliseconds(100))
+        check(KeyComboFormatter.string(for: settings.shortcuts.combo(for: .captureArea)!) == "⇧⌘5", "area is ⇧⌘5")
+        check(KeyComboFormatter.string(for: settings.shortcuts.combo(for: .repeatArea)!) == "⌥⇧⌘5", "repeat is ⌥⇧⌘5")
+        check(KeyComboFormatter.string(for: settings.shortcuts.combo(for: .recognizeText)!) == "⌃⌥⌘O", "OCR is ⌃⌥⌘O")
+        check(app.shortcuts.failed.isEmpty, "all hotkeys registered (failed: \(app.shortcuts.failed.map(\.rawValue)))")
+
+        app.openPreferences(tab: .shortcuts)
+        try await Task.sleep(for: .milliseconds(400))
+        // Record ⌃⌥D for the delayed capture with the recorder button.
+        guard let recorder = Self.find(RecorderButton.self, in: window.contentView!).first(where: { $0.title == "Sin atajo" }) else {
+            return fail("no empty recorder found")
+        }
+        recorder.performClick(nil)
+        check(recorder.title == "Pulsa el atajo…", "recorder waits for keys")
+        if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.control, .option],
+                                        timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                                        context: nil, characters: "d", charactersIgnoringModifiers: "d", isARepeat: false, keyCode: 2) {
+            recorder.keyDown(with: event)
+        }
+        try await Task.sleep(for: .milliseconds(200))
+        let recorded = ShortcutAction.allCases.first { settings.shortcuts.combo(for: $0) == KeyCombo(keyCode: 2, modifiers: KeyCombo.control | KeyCombo.option) }
+        check(recorded != nil, "recorded ⌃⌥D for \(recorded?.title ?? "nothing")")
+        check(app.shortcuts.failed.isEmpty, "hotkeys re-registered after the change")
+        render(window.contentView!.superview!, to: sibling("shortcuts"))
+    }
+
+    private static func find<T: NSView>(_ type: T.Type, in view: NSView) -> [T] {
+        ((view as? T).map { [$0] } ?? []) + view.subviews.flatMap { find(type, in: $0) }
     }
 
     // MARK: Helpers

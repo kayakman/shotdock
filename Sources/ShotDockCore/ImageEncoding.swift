@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-public enum ImageFormat: String, CaseIterable, Sendable {
+public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case png
     case jpeg
 

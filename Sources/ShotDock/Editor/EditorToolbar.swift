@@ -54,9 +54,9 @@ struct EditorToolbar: View {
             .help("Copiar al portapapeles (⌘C)")
 
             Button(action: onSave) {
-                Label("Guardar…", systemImage: "square.and.arrow.down")
+                Label("Guardar", systemImage: "square.and.arrow.down")
             }
-            .help("Guardar como PNG (⌘S)")
+            .help("Guardar en la carpeta de Preferencias (⌘S). Guardar como… con ⇧⌘S")
         }
         .controlSize(.regular)
         .padding(.horizontal, 12)

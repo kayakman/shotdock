@@ -34,19 +34,61 @@ final class AreaSelectionController {
         let screenRect: CGRect
     }
 
-    private var panels: [OverlayPanel] = []
-    private var completion: ((Result?) -> Void)?
+    enum Mode { case area, window }
 
-    init(snapshots: [DisplaySnapshot], completion: @escaping (Result?) -> Void) {
+    enum Outcome {
+        case area(Result)
+        case window(ScreenCapturer.WindowInfo)
+    }
+
+    private var panels: [OverlayPanel] = []
+    private var completion: ((Outcome?) -> Void)?
+    private let windows: [ScreenCapturer.WindowInfo]
+    private(set) var mode: Mode
+    /// Window under the pointer in window mode.
+    private(set) var hoveredWindow: ScreenCapturer.WindowInfo?
+
+    init(snapshots: [DisplaySnapshot], windows: [ScreenCapturer.WindowInfo] = [], mode: Mode = .area,
+         completion: @escaping (Outcome?) -> Void) {
         self.completion = completion
+        self.windows = windows
+        self.mode = windows.isEmpty ? .area : mode
         for snapshot in snapshots {
             let panel = OverlayPanel(screenFrame: snapshot.frame)
-            let view = SelectionView(snapshot: snapshot)
+            let view = SelectionView(snapshot: snapshot, controller: self)
             view.onFinish = { [weak self] rect in self?.finish(snapshot: snapshot, viewRect: rect) }
             view.onCancel = { [weak self] in self?.finish(snapshot: snapshot, viewRect: nil) }
             panel.contentView = view
             panels.append(panel)
         }
+    }
+
+    /// Space switches between dragging an area and picking a window.
+    func toggleMode() {
+        guard !windows.isEmpty else { return }
+        mode = mode == .area ? .window : .area
+        updateHover(at: NSEvent.mouseLocation)
+    }
+
+    func updateHover(at screenPoint: CGPoint) {
+        let hovered = mode == .window ? windows.first { $0.frame.contains(screenPoint) } : nil
+        if hovered?.window.windowID != hoveredWindow?.window.windowID || mode == .area {
+            hoveredWindow = hovered
+            for view in selectionViews { view.needsDisplay = true }
+        }
+    }
+
+    func pickHoveredWindow() {
+        guard let window = hoveredWindow, let completion else { return }
+        self.completion = nil
+        close()
+        completion(.window(window))
+    }
+
+    private func close() {
+        NSCursor.pop()
+        for panel in panels { panel.orderOut(nil) }
+        panels.removeAll()
     }
 
     var selectionViews: [SelectionView] { panels.compactMap { $0.contentView as? SelectionView } }
@@ -59,14 +101,13 @@ final class AreaSelectionController {
         focused?.makeKey()
         focused?.makeFirstResponder(focused?.contentView)
         NSCursor.crosshair.push()
+        updateHover(at: mouse)
     }
 
     private func finish(snapshot: DisplaySnapshot, viewRect: CGRect?) {
         guard let completion else { return }
         self.completion = nil
-        NSCursor.pop()
-        for panel in panels { panel.orderOut(nil) }
-        panels.removeAll()
+        close()
 
         guard let viewRect else { return completion(nil) }
         let pixelRect = CGRect(x: viewRect.minX * snapshot.scale, y: viewRect.minY * snapshot.scale,
@@ -79,12 +120,13 @@ final class AreaSelectionController {
         let screenRect = CGRect(x: snapshot.frame.minX + viewRect.minX,
                                 y: snapshot.frame.maxY - viewRect.maxY,
                                 width: viewRect.width, height: viewRect.height)
-        completion(Result(image: cropped, scale: snapshot.scale, screenRect: screenRect))
+        completion(.area(Result(image: cropped, scale: snapshot.scale, screenRect: screenRect)))
     }
 }
 
 final class SelectionView: NSView {
     let snapshot: DisplaySnapshot
+    private weak var controller: AreaSelectionController?
     var onFinish: ((CGRect) -> Void)?
     var onCancel: (() -> Void)?
 
@@ -92,8 +134,9 @@ final class SelectionView: NSView {
     private var current: CGPoint?
     private var pointer: CGPoint?
 
-    init(snapshot: DisplaySnapshot) {
+    init(snapshot: DisplaySnapshot, controller: AreaSelectionController) {
         self.snapshot = snapshot
+        self.controller = controller
         super.init(frame: CGRect(origin: .zero, size: snapshot.frame.size))
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeAlways, .inVisibleRect],
                                        owner: self, userInfo: nil))
@@ -117,7 +160,9 @@ final class SelectionView: NSView {
         context.drawImageTopLeft(snapshot.image, in: bounds)
 
         context.setFillColor(NSColor.black.withAlphaComponent(0.35).cgColor)
-        if let selection, selection.width > 0, selection.height > 0 {
+        if controller?.mode == .window {
+            drawWindowHighlight(in: context)
+        } else if let selection, selection.width > 0, selection.height > 0 {
             context.addRect(bounds)
             context.addRect(selection)
             context.fillPath(using: .evenOdd)
@@ -128,6 +173,28 @@ final class SelectionView: NSView {
         } else {
             context.fill(bounds)
             if let pointer { drawCrosshair(at: pointer, in: context) }
+        }
+    }
+
+    /// Converts a frame in AppKit global coordinates to this view (top-left origin).
+    private func viewRect(fromScreen frame: CGRect) -> CGRect {
+        CGRect(x: frame.minX - snapshot.frame.minX, y: snapshot.frame.maxY - frame.maxY,
+               width: frame.width, height: frame.height)
+    }
+
+    private func drawWindowHighlight(in context: CGContext) {
+        guard let window = controller?.hoveredWindow else { return context.fill(bounds) }
+        let rect = viewRect(fromScreen: window.frame)
+        context.addRect(bounds)
+        context.addRect(rect)
+        context.fillPath(using: .evenOdd)
+        context.setFillColor(NSColor.controlAccentColor.withAlphaComponent(0.18).cgColor)
+        context.fill(rect)
+        context.setStrokeColor(NSColor.controlAccentColor.cgColor)
+        context.setLineWidth(3)
+        context.stroke(rect.insetBy(dx: 1.5, dy: 1.5))
+        if !window.title.isEmpty, rect.intersects(bounds) {
+            drawLabel(window.title, near: rect.intersection(bounds), in: context)
         }
     }
 
@@ -144,7 +211,11 @@ final class SelectionView: NSView {
     private func drawSizeLabel(for selection: CGRect, in context: CGContext) {
         let width = Int((selection.width * snapshot.scale).rounded())
         let height = Int((selection.height * snapshot.scale).rounded())
-        let text = "\(width) × \(height)" as NSString
+        drawLabel("\(width) × \(height)", near: selection, in: context)
+    }
+
+    private func drawLabel(_ string: String, near selection: CGRect, in context: CGContext) {
+        let text = string as NSString
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
             .foregroundColor: NSColor.white,
@@ -162,22 +233,30 @@ final class SelectionView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         pointer = convert(event.locationInWindow, from: nil)
+        if let window { controller?.updateHover(at: window.convertPoint(toScreen: event.locationInWindow)) }
         needsDisplay = true
     }
 
     override func mouseDown(with event: NSEvent) {
         window?.makeKey()
+        if controller?.mode == .window {
+            if let window { controller?.updateHover(at: window.convertPoint(toScreen: event.locationInWindow)) }
+            controller?.pickHoveredWindow()
+            return
+        }
         anchor = convert(event.locationInWindow, from: nil)
         current = anchor
         needsDisplay = true
     }
 
     override func mouseDragged(with event: NSEvent) {
+        guard anchor != nil else { return }
         current = convert(event.locationInWindow, from: nil)
         needsDisplay = true
     }
 
     override func mouseUp(with event: NSEvent) {
+        guard anchor != nil else { return }
         current = convert(event.locationInWindow, from: nil)
         if let selection, selection.width >= 2, selection.height >= 2 {
             onFinish?(selection)
@@ -189,7 +268,11 @@ final class SelectionView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { onCancel?() } else { super.keyDown(with: event) }  // Esc
+        switch event.keyCode {
+        case 53: onCancel?()                     // Esc
+        case 49: controller?.toggleMode()        // Space
+        default: super.keyDown(with: event)
+        }
     }
 
     override func cancelOperation(_ sender: Any?) { onCancel?() }

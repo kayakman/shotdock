@@ -31,8 +31,78 @@ enum ScreenCapturer {
     @discardableResult
     static func requestPermission() -> Bool { CGRequestScreenCaptureAccess() }
 
+    /// A window that can be picked: its id and frame in AppKit global coordinates.
+    struct WindowInfo {
+        let window: SCWindow
+        let frame: CGRect
+        let title: String
+    }
+
     @MainActor
-    static func snapshotAllDisplays() async throws -> [DisplaySnapshot] {
+    static func snapshotDisplay(containing point: CGPoint) async throws -> DisplaySnapshot {
+        let screen = NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens[0]
+        let snapshots = try await snapshotAllDisplays(only: screen.displayID)
+        guard let snapshot = snapshots.first else { throw ScreenCaptureError.noDisplays }
+        return snapshot
+    }
+
+    /// On-screen normal windows, front to back, excluding ShotDock's own.
+    @MainActor
+    static func pickableWindows() async throws -> [WindowInfo] {
+        let content = try await shareableContent()
+        let byID = Dictionary(content.windows.map { ($0.windowID, $0) }, uniquingKeysWith: { a, _ in a })
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        // CGWindowList gives the z-order; ScreenCaptureKit gives capturable windows.
+        let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        return list.compactMap { info in
+            guard let number = info[kCGWindowNumber as String] as? CGWindowID,
+                  let window = byID[number],
+                  (info[kCGWindowLayer as String] as? Int) == 0,
+                  window.owningApplication?.processID != ownPID,
+                  window.frame.width > 40, window.frame.height > 40 else { return nil }
+            // Quartz window frames have a top-left origin on the primary display.
+            let f = window.frame
+            let frame = CGRect(x: f.minX, y: primaryHeight - f.maxY, width: f.width, height: f.height)
+            return WindowInfo(window: window, frame: frame, title: window.title ?? window.owningApplication?.applicationName ?? "")
+        }
+    }
+
+    /// The frontmost window of the active app.
+    @MainActor
+    static func activeWindow() async throws -> WindowInfo? {
+        let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        return try await pickableWindows().first { $0.window.owningApplication?.processID == pid }
+    }
+
+    /// Captures one window by itself, with transparent corners (and its shadow if asked).
+    @MainActor
+    static func capture(window: SCWindow, shadow: Bool) async throws -> (image: CGImage, scale: CGFloat) {
+        let filter = SCContentFilter(desktopIndependentWindow: window)
+        let scale = CGFloat(filter.pointPixelScale)
+        let config = SCStreamConfiguration()
+        config.width = Int((filter.contentRect.width * scale).rounded())
+        config.height = Int((filter.contentRect.height * scale).rounded())
+        config.showsCursor = false
+        config.captureResolution = .best
+        config.colorSpaceName = CGColorSpace.sRGB
+        config.shouldBeOpaque = false
+        config.ignoreShadowsSingleWindow = !shadow
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        return (image, scale)
+    }
+
+    @MainActor
+    private static func shareableContent() async throws -> SCShareableContent {
+        do {
+            return try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+        } catch {
+            throw hasPermission ? error : ScreenCaptureError.permissionDenied
+        }
+    }
+
+    @MainActor
+    static func snapshotAllDisplays(only displayID: CGDirectDisplayID? = nil) async throws -> [DisplaySnapshot] {
         let content: SCShareableContent
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -43,7 +113,7 @@ enum ScreenCapturer {
 
         let ownApp = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
         var snapshots: [DisplaySnapshot] = []
-        for display in content.displays {
+        for display in content.displays where displayID == nil || display.displayID == displayID {
             guard let screen = NSScreen.screens.first(where: { $0.displayID == display.displayID }) else { continue }
             let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
             let scale = CGFloat(filter.pointPixelScale)
