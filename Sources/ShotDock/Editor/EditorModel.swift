@@ -3,7 +3,7 @@ import Observation
 import ShotDockCore
 
 enum EditorTool: String, CaseIterable, Identifiable {
-    case arrow, rectangle, ellipse, highlight, text, step, blur, pixelate, eraser, crop, ruler, colorPicker
+    case arrow, rectangle, ellipse, highlight, text, step, magnifier, blur, pixelate, eraser, crop, ruler, colorPicker
 
     var id: String { rawValue }
 
@@ -15,6 +15,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .highlight: "Resaltador"
         case .text: "Texto"
         case .step: "Paso numerado"
+        case .magnifier: "Lupa"
         case .blur: "Desenfocar"
         case .pixelate: "Pixelar"
         case .eraser: "Borrador inteligente"
@@ -32,6 +33,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .highlight: "highlighter"
         case .text: "textformat"
         case .step: "1.circle.fill"
+        case .magnifier: "plus.magnifyingglass"
         case .blur: "drop.halffull"
         case .pixelate: "checkerboard.rectangle"
         case .eraser: "eraser"
@@ -50,6 +52,7 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .highlight: "h"
         case .text: "t"
         case .step: "n"
+        case .magnifier: "z"
         case .blur: "b"
         case .pixelate: "p"
         case .eraser: "e"
@@ -103,6 +106,22 @@ final class EditorModel {
             restyleSelection { $0.lineWidth = style.lineWidth; $0.fontSize = style.fontSize }
         }
     }
+    /// Shape of new magnifiers; also applied to the selected one.
+    var magnifierRound = true {
+        didSet {
+            guard var annotation = selected, case let .magnifier(source, target, round) = annotation.shape,
+                  round != magnifierRound else { return }
+            annotation.shape = .magnifier(source: source, target: target, round: magnifierRound)
+            replace(annotation, actionName: "Cambiar forma de la lupa")
+        }
+    }
+
+    var showsMagnifierOptions: Bool {
+        if tool == .magnifier { return true }
+        if case .magnifier = selected?.shape { return true }
+        return false
+    }
+
     var selectedID: UUID? {
         didSet { onDocumentChange?() }
     }

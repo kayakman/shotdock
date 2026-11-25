@@ -41,6 +41,16 @@ struct EditorToolbar: View {
             .disabled(!model.tool.usesColor)
             .opacity(model.tool.usesColor ? 1 : 0.35)
 
+            if model.showsMagnifierOptions {
+                Picker("Forma", selection: $model.magnifierRound) {
+                    Image(systemName: "circle").help("Círculo").tag(true)
+                    Image(systemName: "square").help("Rectángulo").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+            }
+
             Picker(model.tool.usesColor ? "Grosor" : "Intensidad", selection: $model.weight) {
                 ForEach(LineWeight.allCases) { Text($0.title).tag($0) }
             }

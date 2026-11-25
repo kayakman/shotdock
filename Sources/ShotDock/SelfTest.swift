@@ -45,6 +45,7 @@ final class SelfTest {
             case "upload": try await upload()
             case "scroll": try await scroll()
             case "dock": try await dock()
+            case "magnifier": try await magnifier()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -370,6 +371,44 @@ final class SelfTest {
         if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
         try await Task.sleep(for: .milliseconds(200))
         check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// The magnifier annotation: select a source, the enlargement appears beside it.
+    private func magnifier() async throws {
+        let image = Self.testPattern(width: 1200, height: 800, text: "Detalle pequeño")
+        let editor = app.coordinator.openEditor(with: CaptureDocument(image: image, scale: 2))
+        try await Task.sleep(for: .milliseconds(300))
+        guard let window = editor.window else { return fail("no editor") }
+        let model = editor.model
+        let at = { (x: CGFloat, y: CGFloat) in editor.canvas.convert(CGPoint(x: x, y: y), to: nil) }
+
+        model.tool = .magnifier
+        drag(from: at(60, 670), to: at(260, 730), in: window)
+        guard case let .magnifier(source, target, round)? = model.document.annotations.last?.shape else { return fail("no magnifier added") }
+        check(source == CGRect(x: 60, y: 670, width: 200, height: 60), "source is the dragged area (\(source))")
+        check(round && abs(target.width / source.width - 2) < 0.01 && model.document.visibleRect.contains(target),
+              "enlarged 2× inside the image (\(target))")
+
+        // Drag the enlargement: only it moves.
+        model.tool = .arrow
+        drag(from: at(target.midX, target.midY), to: at(target.midX, target.midY - 300), in: window)
+        guard case let .magnifier(s2, t2, _)? = model.document.annotations.last?.shape else { return fail("lost the magnifier") }
+        check(s2 == source && abs(t2.minY - (target.minY - 300)) < 1, "dragging the enlargement leaves the source (\(t2))")
+
+        // Resize the enlargement from its bottom-right handle: aspect ratio kept.
+        model.selectedID = model.document.annotations.last?.id
+        drag(from: at(t2.maxX, t2.maxY), to: at(t2.maxX + 200, t2.maxY), in: window)
+        if case let .magnifier(_, t3, _)? = model.document.annotations.last?.shape {
+            check(abs(t3.width - (t2.width + 200)) < 1 && abs(t3.width / t3.height - source.width / source.height) < 0.01,
+                  "handle resizes keeping the aspect (\(t3))")
+        }
+        model.magnifierRound = false
+        if case let .magnifier(_, _, r)? = model.document.annotations.last?.shape { check(!r, "shape switches to a rectangle") }
+        try await Task.sleep(for: .milliseconds(200))
+        try await snapshot(window, to: sibling("magnifier"))
+        model.undoManager.undo()
+        if case let .magnifier(_, _, r)? = model.document.annotations.last?.shape { check(r, "undo restores the circle") }
+        editor.close()
     }
 
     /// Dock icon while a window is open, menu-bar-only otherwise.

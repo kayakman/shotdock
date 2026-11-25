@@ -13,6 +13,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         case resizing(handle: Int, original: Annotation)
         case cropping(start: CGPoint, rect: CGRect)
         case measuring(start: CGPoint, end: CGPoint)
+        case magnifying(start: CGPoint, rect: CGRect)
+        case movingPart(start: CGPoint, original: Annotation, part: Annotation.MagnifierPart)
     }
 
     private var drag: Drag?
@@ -78,7 +80,13 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             context.stroke(rect)
         case let .measuring(start, end):
             drawMeasurement(from: start, to: end, in: context)
-        case .moving, .resizing, nil:
+        case let .magnifying(_, rect):
+            context.setStrokeColor(model.color.cgColor)
+            context.setLineWidth(1.5 * pixelsPerScreenPoint)
+            context.setLineDash(phase: 0, lengths: [5 * pixelsPerScreenPoint, 3 * pixelsPerScreenPoint])
+            if model.magnifierRound { context.strokeEllipse(in: rect) } else { context.stroke(rect) }
+            context.setLineDash(phase: 0, lengths: [])
+        case .moving, .resizing, .movingPart, nil:
             if let hoverPoint, model.tool == .ruler { drawEdgeRuler(at: hoverPoint, in: context) }
         }
         if let hoverPoint, model.tool == .colorPicker || model.tool == .ruler {
@@ -222,6 +230,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             model.selectedID = hit.id
             if event.clickCount == 2, case .text = hit.shape {
                 beginTextEditing(hit)
+            } else if let part = hit.magnifierPart(at: point, tolerance: 4 * model.document.scale) {
+                drag = .movingPart(start: point, original: hit, part: part)
             } else {
                 drag = .moving(start: point, original: hit)
             }
@@ -252,6 +262,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             drag = .cropping(start: point, rect: box)
         case .ruler, .colorPicker:
             break
+        case .magnifier:
+            drag = .magnifying(start: point, rect: box)
         case .text:
             let origin = CGPoint(x: point.x, y: point.y - style.fontSize * 0.6)
             beginTextEditing(Annotation(shape: .text(origin: origin, string: ""), style: style))
@@ -280,6 +292,11 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         case let .measuring(start, _):
             drag = .measuring(start: start, end: point)
             hoverPoint = point
+        case let .magnifying(start, _):
+            if event.modifierFlags.contains(.shift) { point = square(point, from: start) }
+            drag = .magnifying(start: start, rect: CGRect(corner: start, corner: point).intersection(model.document.visibleRect))
+        case let .movingPart(start, original, part):
+            model.replaceWithoutUndo(original.movingPart(part, dx: point.x - start.x, dy: point.y - start.y))
         case let .cropping(start, _):
             drag = .cropping(start: start, rect: CGRect(corner: start, corner: point).intersection(bounds))
         case nil:
@@ -297,6 +314,13 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             commitLiveEdit(from: original, actionName: "Mover")
         case let .resizing(_, original):
             commitLiveEdit(from: original, actionName: "Cambiar tamaño")
+        case let .movingPart(_, original, _):
+            commitLiveEdit(from: original, actionName: "Mover")
+        case let .magnifying(_, rect):
+            let document = model.document
+            let magnifier = Annotation.magnifier(source: rect.integral, round: model.magnifierRound, within: document.visibleRect,
+                                                 gap: 16 * document.scale, style: model.currentStyle)
+            model.add(magnifier)
         case let .cropping(_, rect):
             model.crop(to: rect)
         case let .measuring(start, end):

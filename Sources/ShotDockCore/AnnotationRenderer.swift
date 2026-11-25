@@ -8,11 +8,14 @@ public enum AnnotationRenderer {
     /// Pixel effects (blur, pixelate, eraser) belong to the picture, so they
     /// go under every vector mark regardless of the order they were added.
     public static func draw(_ annotations: [Annotation], in context: CGContext, source: CGImage?) {
-        for annotation in annotations where annotation.isPixelEffect { draw(annotation, in: context, source: source) }
-        for annotation in annotations where !annotation.isPixelEffect { draw(annotation, in: context, source: source) }
+        let effects = annotations.filter(\.isPixelEffect)
+        for annotation in effects { draw(annotation, in: context, source: source) }
+        for annotation in annotations where !annotation.isPixelEffect { draw(annotation, in: context, source: source, effects: effects) }
     }
 
-    public static func draw(_ annotation: Annotation, in context: CGContext, source: CGImage?) {
+    /// `effects` are the pixel effects of the document: a magnifier shows the
+    /// picture with them applied, so it never reveals what was blurred.
+    public static func draw(_ annotation: Annotation, in context: CGContext, source: CGImage?, effects: [Annotation] = []) {
         let style = annotation.style
         context.saveGState()
         defer { context.restoreGState() }
@@ -45,7 +48,73 @@ public enum AnnotationRenderer {
             drawEffect(.pixelate, rect, strength: max(style.lineWidth * 2.5, 8), source: source, in: context)
         case let .erase(rect):
             drawEffect(.erase, rect, strength: 0, source: source, in: context)
+        case let .magnifier(sourceRect, target, round):
+            drawMagnifier(sourceRect, target, round: round, style: style, image: source, effects: effects, in: context)
         }
+    }
+
+    private static func drawMagnifier(_ sourceRect: CGRect, _ target: CGRect, round: Bool, style: AnnotationStyle,
+                                      image: CGImage?, effects: [Annotation], in context: CGContext) {
+        let thin = max(style.lineWidth * 0.4, 1.5)
+        let outline: (CGRect) -> CGPath = { rect in
+            round ? CGPath(ellipseIn: rect, transform: nil)
+                  : CGPath(roundedRect: rect, cornerWidth: min(rect.width, rect.height) * 0.06,
+                           cornerHeight: min(rect.width, rect.height) * 0.06, transform: nil)
+        }
+
+        // Connector between the shapes' centres, kept outside both so it never covers the source.
+        context.saveGState()
+        context.addRect(sourceRect.union(target).insetBy(dx: -thin * 4, dy: -thin * 4))
+        context.addPath(outline(sourceRect))
+        context.addPath(outline(target))
+        context.clip(using: .evenOdd)
+        context.setLineWidth(thin)
+        context.setLineDash(phase: 0, lengths: [thin * 3, thin * 2])
+        context.strokeLineSegments(between: [CGPoint(x: sourceRect.midX, y: sourceRect.midY), CGPoint(x: target.midX, y: target.midY)])
+        context.restoreGState()
+        context.setLineWidth(max(style.lineWidth * 0.6, 2))
+        context.addPath(outline(sourceRect))
+        context.strokePath()
+
+        // The enlargement, with a shadow behind it.
+        context.saveGState()
+        let shadowOffset = context.convertToDeviceSpace(CGSize(width: 0, height: style.lineWidth))
+        let blur = context.convertToDeviceSpace(CGSize(width: style.lineWidth * 3, height: 0))
+        context.setShadow(offset: shadowOffset, blur: hypot(blur.width, blur.height), color: CGColor(gray: 0, alpha: 0.4))
+        context.addPath(outline(target))
+        context.setFillColor(CGColor(gray: 1, alpha: 1))
+        context.fillPath()
+        context.restoreGState()
+
+        if let image, let region = composite(image, effects: effects, region: sourceRect) {
+            context.saveGState()
+            context.addPath(outline(target))
+            context.clip()
+            // Big zooms show the pixels as squares, small ones stay smooth.
+            context.interpolationQuality = target.width / max(sourceRect.width, 1) >= 3 ? .none : .high
+            context.drawImageTopLeft(region, in: target)
+            context.restoreGState()
+        }
+        context.setLineWidth(style.lineWidth)
+        context.addPath(outline(target))
+        context.strokePath()
+    }
+
+    /// The picture inside `region` with the pixel effects that touch it.
+    static func composite(_ image: CGImage, effects: [Annotation], region: CGRect) -> CGImage? {
+        let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        let rect = region.pixelAligned.intersection(bounds)
+        guard rect.width >= 1, rect.height >= 1 else { return nil }
+        let touching = effects.filter { $0.bounds.intersects(rect) }
+        guard !touching.isEmpty else { return image.cropping(to: rect) }
+        guard let context = CGContext(data: nil, width: Int(rect.width), height: Int(rect.height), bitsPerComponent: 8,
+                                      bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.flipVertically(height: rect.height)
+        context.translateBy(x: -rect.minX, y: -rect.minY)
+        context.drawImageTopLeft(image, in: bounds)
+        for effect in touching { draw(effect, in: context, source: image) }
+        return context.makeImage()
     }
 
     private static func drawEffect(_ kind: ImageEffects.Kind, _ rect: CGRect, strength: CGFloat, source: CGImage?, in context: CGContext) {
