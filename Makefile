@@ -3,7 +3,7 @@ SIGN_IDENTITY ?= ShotDock Local Signing
 APP           := build/ShotDock.app
 BIN_DIR        = $(shell swift build -c $(CONFIG) --show-bin-path)
 
-.PHONY: build app run test selftest signing-cert clean
+.PHONY: build app run test selftest signing-cert icons clean
 
 build:
 	swift build -c $(CONFIG)
@@ -13,6 +13,10 @@ app: build
 	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
 	cp Resources/Info.plist $(APP)/Contents/Info.plist
 	cp $(BIN_DIR)/ShotDock $(APP)/Contents/MacOS/ShotDock
+	xcrun actool Resources/Assets.xcassets --compile $(APP)/Contents/Resources \
+		--platform macosx --minimum-deployment-target 15.0 \
+		--app-icon AppIcon --accent-color AccentColor \
+		--output-partial-info-plist build/assets-info.plist --errors --warnings >/dev/null
 	codesign --force --sign "$(SIGN_IDENTITY)" --identifier app.shotdock.ShotDock $(APP)
 	@echo "Built $(APP)"
 
@@ -32,6 +36,9 @@ selftest: app
 	open -W -n $(APP) --args --selftest $(TEST) $(CURDIR)/build/selftest.png
 	@cat build/selftest.log
 	@! grep -q '^FAIL' build/selftest.log
+
+icons:
+	swift design/make-icons.swift
 
 signing-cert:
 	scripts/make-signing-cert.sh

@@ -31,6 +31,7 @@ final class SelfTest {
             case "capture": try await capture()
             case "area": try await area()
             case "editor": try await editor()
+            case "branding": try await branding()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -190,6 +191,49 @@ final class SelfTest {
         note("wrote \(output.path)")
         editor.close()
         check(app.coordinator.editors.isEmpty, "closing releases the editor")
+    }
+
+    /// Asset catalog resources: menu bar template, logo in both appearances,
+    /// accent colour and app icon.
+    private func branding() async throws {
+        let menuBar = NSImage(named: "MenuBarIcon")
+        check(menuBar != nil && menuBar!.isTemplate && menuBar!.size == NSSize(width: 18, height: 18),
+              "menu bar icon is an 18 pt template (\(String(describing: menuBar?.size)))")
+        check(NSImage(named: "Logo") != nil, "logo loads")
+        check(NSApp.applicationIconImage != nil, "app icon loads")
+        let accent = NSColor.controlAccentColor.usingColorSpace(.sRGB)
+        note("controlAccentColor \(String(describing: accent)) (follows the user's system setting unless it is Multicolour)")
+        let named = NSColor(named: "AccentColor")?.usingColorSpace(.sRGB)
+        check(named.map { abs($0.redComponent - 1) < 0.01 && abs($0.greenComponent - 0x5A / 255.0) < 0.01 } ?? false,
+              "AccentColor is #FF5A1F")
+
+        let about = AboutWindowController.shared
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            about.window?.appearance = NSAppearance(named: appearance)
+            about.show()
+            try await Task.sleep(for: .milliseconds(400))
+            if let view = about.window?.contentView?.superview { render(view, to: sibling("about-\(name)")) }
+        }
+        about.close()
+
+        // Menu bar icon tinted as the system does for light and dark menu bars.
+        if let menuBar {
+            let size = NSSize(width: 72, height: 36)
+            let image = NSImage(size: size, flipped: false) { _ in
+                NSColor.white.setFill(); NSRect(x: 0, y: 0, width: 36, height: 36).fill()
+                NSColor.black.setFill(); NSRect(x: 36, y: 0, width: 36, height: 36).fill()
+                for (x, color) in [(CGFloat(9), NSColor.black), (45, NSColor.white)] {
+                    let tinted = NSImage(size: menuBar.size, flipped: false) { rect in
+                        menuBar.draw(in: rect); color.set(); rect.fill(using: .sourceAtop); return true
+                    }
+                    tinted.draw(in: NSRect(x: x, y: 9, width: 18, height: 18))
+                }
+                return true
+            }
+            if let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
+                try? rep.representation(using: .png, properties: [:])?.write(to: sibling("menubar"))
+            }
+        }
     }
 
     // MARK: Helpers

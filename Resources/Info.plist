@@ -6,6 +6,12 @@
 	<string>es</string>
 	<key>CFBundleExecutable</key>
 	<string>ShotDock</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>NSAccentColorName</key>
+	<string>AccentColor</string>
 	<key>CFBundleIdentifier</key>
 	<string>app.shotdock.ShotDock</string>
 	<key>CFBundleInfoDictionaryVersion</key>

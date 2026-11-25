@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024.00" height="1024.00" viewBox="0 0 1024.00 1024.00">
+  <defs>
+  <linearGradient id="graphite" x1="0" y1="100.00" x2="0" y2="924.00" gradientUnits="userSpaceOnUse">
+    <stop offset="0.0" stop-color="#2D2E32"/><stop offset="0.5" stop-color="#141518"/><stop offset="1.0" stop-color="#050608"/>
+  </linearGradient>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+    <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.3"/>
+  </filter>
+  </defs>
+  <path d="M924.00 512.00L924.00 640.59C924.00 722.19 924.00 763.00 910.11 806.92C892.66 854.88 854.88 892.66 806.92 910.11C763.00 924.00 722.19 924.00 640.59 924.00L383.41 924.00C301.81 924.00 261.00 924.00 217.08 910.11C169.12 892.66 131.34 854.88 113.89 806.92C100.00 763.00 100.00 722.19 100.00 640.59L100.00 383.41C100.00 301.81 100.00 261.00 113.89 217.08C131.34 169.12 169.12 131.34 217.08 113.89C261.00 100.00 301.81 100.00 383.41 100.00L640.59 100.00C722.19 100.00 763.00 100.00 806.92 113.89C854.88 131.34 892.66 169.12 910.11 217.08C924.00 261.00 924.00 301.81 924.00 383.41Z" fill="url(#graphite)" filter="url(#shadow)"/>
+  <polyline points="416.00,288.00 288.00,288.00 288.00,416.00" fill="none" stroke="#FFFFFF" stroke-width="64.00" stroke-linecap="square" stroke-linejoin="miter"/>
+  <polyline points="608.00,288.00 736.00,288.00 736.00,416.00" fill="none" stroke="#FFFFFF" stroke-width="64.00" stroke-linecap="square" stroke-linejoin="miter"/>
+  <polyline points="288.00,608.00 288.00,736.00 416.00,736.00" fill="none" stroke="#FFFFFF" stroke-width="64.00" stroke-linecap="square" stroke-linejoin="miter"/>
+  <polyline points="736.00,608.00 736.00,736.00 608.00,736.00" fill="none" stroke="#FFFFFF" stroke-width="64.00" stroke-linecap="square" stroke-linejoin="miter"/>
+  <circle cx="512.00" cy="512.00" r="96.00" fill="#FF5A1F"/>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024.00" height="1024.00" viewBox="0 0 1024.00 1024.00">
+  <defs>
+  <linearGradient id="graphite" x1="0" y1="100.00" x2="0" y2="924.00" gradientUnits="userSpaceOnUse">
+    <stop offset="0.0" stop-color="#2D2E32"/><stop offset="0.5" stop-color="#141518"/><stop offset="1.0" stop-color="#050608"/>
+  </linearGradient>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+    <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.3"/>
+  </filter>
+  <linearGradient id="fade0" x1="143.68" y1="0" x2="245.85" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#FF5A1F" stop-opacity="0"/><stop offset="1" stop-color="#FF5A1F"/>
+  </linearGradient>
+  <linearGradient id="fade1" x1="133.46" y1="0" x2="245.85" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#FF5A1F" stop-opacity="0"/><stop offset="1" stop-color="#FF5A1F"/>
+  </linearGradient>
+  <linearGradient id="fade2" x1="153.89" y1="0" x2="250.96" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#FF5A1F" stop-opacity="0"/><stop offset="1" stop-color="#FF5A1F"/>
+  </linearGradient>
+  </defs>
+  <path d="M924.00 512.00L924.00 640.59C924.00 722.19 924.00 763.00 910.11 806.92C892.66 854.88 854.88 892.66 806.92 910.11C763.00 924.00 722.19 924.00 640.59 924.00L383.41 924.00C301.81 924.00 261.00 924.00 217.08 910.11C169.12 892.66 131.34 854.88 113.89 806.92C100.00 763.00 100.00 722.19 100.00 640.59L100.00 383.41C100.00 301.81 100.00 261.00 113.89 217.08C131.34 169.12 169.12 131.34 217.08 113.89C261.00 100.00 301.81 100.00 383.41 100.00L640.59 100.00C722.19 100.00 763.00 100.00 806.92 113.89C854.88 131.34 892.66 169.12 910.11 217.08C924.00 261.00 924.00 301.81 924.00 383.41Z" fill="url(#graphite)" filter="url(#shadow)"/>
+  <polyline points="143.68,426.18 312.26,426.18" fill="none" stroke="url(#fade0)" stroke-width="20.43" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="133.46,497.70 358.23,497.70" fill="none" stroke="url(#fade1)" stroke-width="20.43" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="153.89,561.04 312.26,561.04" fill="none" stroke="url(#fade2)" stroke-width="20.43" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="476.75,314.81 370.49,314.81 370.49,412.90" fill="none" stroke="#FFFFFF" stroke-width="18.39" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="647.38,314.81 753.63,314.81 753.63,412.90" fill="none" stroke="#FFFFFF" stroke-width="18.39" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="370.49,574.32 370.49,672.41 476.75,672.41" fill="none" stroke="#FFFFFF" stroke-width="18.39" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="753.63,574.32 753.63,672.41 647.38,672.41" fill="none" stroke="#FFFFFF" stroke-width="18.39" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="562.06,420.05 562.06,452.74" fill="none" stroke="#FF5A1F" stroke-width="15.84" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="562.06,542.65 562.06,575.35" fill="none" stroke="#FF5A1F" stroke-width="15.84" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="475.73,497.70 516.60,497.70" fill="none" stroke="#FF5A1F" stroke-width="15.84" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="606.51,497.70 647.38,497.70" fill="none" stroke="#FF5A1F" stroke-width="15.84" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="562.06" cy="497.70" r="25.03" fill="#FF5A1F"/>
+</svg>
