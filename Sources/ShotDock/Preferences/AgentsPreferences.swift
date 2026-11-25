@@ -82,6 +82,13 @@ struct AgentsPreferences: View {
                             installError = "No se pudo crear el enlace. En la terminal:\nln -sf '\(CLIInstaller.helperURL.path)' /usr/local/bin/shotdock"
                         }
                     }
+                    Text("Para Claude Code: `claude mcp add shotdock -- shotdock mcp`")
+                        .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    Button("Copiar la orden para Claude Code") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("claude mcp add shotdock -- \(installed == nil ? CLIInstaller.helperURL.path : "shotdock") mcp",
+                                                       forType: .string)
+                    }
                     if let installError {
                         Text(installError).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                             .frame(maxWidth: 400, alignment: .leading).fixedSize(horizontal: false, vertical: true)

@@ -47,6 +47,10 @@ public enum JSONValue: Codable, Equatable, Sendable {
         if case let .object(object) = self { object[key] } else { nil }
     }
 
+    public subscript(index: Int) -> JSONValue? {
+        if case let .array(array) = self, array.indices.contains(index) { array[index] } else { nil }
+    }
+
     public var stringValue: String? { if case let .string(value) = self { value } else { nil } }
     public var doubleValue: Double? { if case let .number(value) = self { value } else { nil } }
     public var boolValue: Bool? { if case let .bool(value) = self { value } else { nil } }

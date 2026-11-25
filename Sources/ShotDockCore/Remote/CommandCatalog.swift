@@ -34,6 +34,9 @@ public enum CommandCatalog {
     static let general: [CommandSpec] = [
         CommandSpec("status", "ShotDock's version, permissions and displays", readOnly: true),
         CommandSpec("schema", "Print every command and its parameters as JSON", exposure: .local, readOnly: true),
+        CommandSpec("mcp", "Run the MCP server on stdin/stdout, for Claude Code, Codex, Cursor…", details: """
+            Register it with `claude mcp add shotdock -- shotdock mcp`. Every command that is not local is a tool.
+            """, exposure: .local),
     ]
 
     // MARK: Displays and windows

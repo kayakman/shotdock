@@ -49,6 +49,7 @@ final class SelfTest {
             case "overlay-fidelity": try await overlayFidelity()
             case "cli": try await cli()
             case "cli-capture": try await cliCapture()
+            case "mcp": try await mcp()
             default: fail("unknown selftest \(name)")
             }
         } catch {

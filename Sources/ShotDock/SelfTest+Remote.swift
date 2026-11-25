@@ -217,3 +217,51 @@ extension SelfTest {
         check(NSPasteboard.general.string(forType: .string) == nil || NSPasteboard.general.data(forType: .png) != nil, "clipboard as left by --copy")
     }
 }
+
+extension SelfTest {
+    /// `shotdock mcp` as Claude Code runs it: JSON-RPC on stdin, answers on stdout.
+    func mcp() async throws {
+        AppSettings.shared.agentControlEnabled = true
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        func message(_ id: Int?, _ method: String, _ params: JSONValue = [:]) -> String {
+            var object: [String: JSONValue] = ["jsonrpc": "2.0", "method": .string(method), "params": params]
+            if let id { object["id"] = .number(Double(id)) }
+            return JSONValue.object(object).jsonString()
+        }
+        var canCapture = false
+        if ScreenCapturer.hasPermission { canCapture = (try? await ScreenCapturer.snapshotAllDisplays()) != nil }
+        let input = [
+            message(1, "initialize", ["protocolVersion": "2025-06-18", "capabilities": [:], "clientInfo": ["name": "selftest", "version": "1"]]),
+            message(nil, "notifications/initialized"),
+            message(2, "tools/list"),
+            message(3, "tools/call", ["name": "status", "arguments": [:]]),
+            message(4, "tools/call", ["name": "list_displays", "arguments": [:]]),
+            message(5, "tools/call", ["name": "capture_area", "arguments": ["rect": ["x": 0, "y": 0, "width": 640, "height": 480]]]),
+            message(6, "tools/call", ["name": "capture_area", "arguments": ["rect": "0,0,10,10"]]),
+        ].joined(separator: "\n") + "\n"
+        let run = try await shotdock(["mcp"], stdin: Data(input.utf8))
+        let replies = run.stdout.split(separator: "\n").compactMap { try? JSONValue(parsing: String($0)) }
+        check(run.status == 0 && replies.map { $0["id"] } == [1, 2, 3, 4, 5, 6], "one answer per request, none for the notification (\(replies.count))")
+        func reply(_ id: Int) -> JSONValue? { replies.first { $0["id"] == .number(Double(id)) }?["result"] }
+
+        check(reply(1)?["protocolVersion"] == "2025-06-18" && reply(1)?["serverInfo"]?["name"] == "shotdock", "initialize")
+        let tools = reply(2)?["tools"]?.arrayValue ?? []
+        check(tools.count == CommandCatalog.tools.count && tools.contains { $0["name"] == "capture_window" }, "tools/list has every tool (\(tools.count))")
+        check(reply(3)?["structuredContent"]?["agent_control"]?["enabled"] == true, "status through MCP")
+        check(reply(4)?["structuredContent"]?["displays"]?.arrayValue?.count == NSScreen.screens.count, "list_displays through MCP")
+        if canCapture {
+            let content = reply(5)?["content"]?.arrayValue ?? []
+            let structured = reply(5)?["structuredContent"]
+            check(content.contains { $0["type"] == "image" } && structured?["path"]?.stringValue != nil, "capture_area returns a preview image and the path")
+            let scale = NSScreen.screens[0].backingScaleFactor
+            check(structured?["width"]?.intValue == Int(640 * scale) && structured?["preview_scale"]?.doubleValue != nil,
+                  "full-size capture with its preview scale (\(structured?["preview_scale"] ?? nil))")
+        } else {
+            check(reply(5)?["isError"] == true, "capture_area fails cleanly without a capturable screen")
+            note("screen not capturable (locked or no permission): preview not checked")
+        }
+        check(reply(6)?["isError"] == true && reply(6)?["content"]?[0]?["text"]?.stringValue?.hasPrefix("invalid_params") == true,
+              "bad arguments are a tool error")
+    }
+}

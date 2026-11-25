@@ -78,6 +78,9 @@ func runLocal(_ invocation: CLIInvocation) -> Int32 {
     case "schema":
         print(CommandCatalog.schema().jsonString(pretty: true))
         return ExitCode.ok
+    case "mcp":
+        MCPBridge().run()
+        return ExitCode.ok
     default:
         printError("\(invocation.command.name) is not available", kind: "unknown_command", code: nil, json: invocation.json)
         return ExitCode.usage
