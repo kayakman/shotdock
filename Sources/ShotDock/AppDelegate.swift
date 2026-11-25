@@ -7,10 +7,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private(set) var shortcuts: ShortcutManager!
     private var statusItem: NSStatusItem?
     private var preferences: PreferencesWindowController?
+    private(set) var gallery: GalleryWindowController?
 
     /// Actions that already work; the rest keep their shortcut for later phases.
     static let availableActions: Set<ShortcutAction> = [
-        .captureArea, .repeatArea, .captureActiveWindow, .captureWindow, .captureFullscreen, .captureDelayed, .pickColor,
+        .captureArea, .repeatArea, .captureActiveWindow, .captureWindow, .captureFullscreen, .captureDelayed, .pickColor, .showHistory,
     ]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -35,7 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .captureFullscreen: coordinator.captureFullscreen()
         case .captureDelayed: coordinator.captureDelayed()
         case .pickColor: coordinator.pickColor()
-        case .captureScrolling, .recognizeText, .showHistory: NSSound.beep()
+        case .showHistory: showGallery()
+        case .captureScrolling, .recognizeText: NSSound.beep()
         }
     }
 
@@ -68,6 +70,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(item)
         }
         menu.addItem(.separator())
+        let recent = LibraryStore.shared.items.prefix(5)
+        if !recent.isEmpty {
+            for item in recent {
+                let entry = NSMenuItem(title: item.createdAt.formatted(date: .omitted, time: .shortened) + "  ·  \(item.pixelWidth) × \(item.pixelHeight)",
+                                       action: #selector(openRecent(_:)), keyEquivalent: "")
+                entry.representedObject = item.id
+                entry.target = self
+                if let thumbnail = LibraryStore.shared.thumbnail(item.id) {
+                    let size = NSSize(width: 48, height: 48 * thumbnail.size.height / max(thumbnail.size.width, 1))
+                    entry.image = NSImage(size: NSSize(width: 48, height: min(size.height, 36)), flipped: false) { rect in
+                        thumbnail.draw(in: rect.insetBy(dx: 0, dy: 0), from: .zero, operation: .sourceOver, fraction: 1)
+                        return true
+                    }
+                }
+                menu.addItem(entry)
+            }
+            menu.addItem(.separator())
+        }
         if !ScreenCapturer.hasPermission {
             menu.addItem(withTitle: "Conceder permiso de grabación de pantalla…", action: #selector(openScreenRecordingSettings), keyEquivalent: "").target = self
             menu.addItem(.separator())
@@ -85,6 +105,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func captureArea() { coordinator.captureArea() }
+
+    @objc private func openRecent(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        coordinator.openEditor(libraryItem: id)
+    }
+
+    @objc func showGallery() {
+        if gallery == nil { gallery = GalleryWindowController(store: .shared, coordinator: coordinator) }
+        gallery?.show()
+    }
 
     @objc private func openScreenRecordingSettings() {
         ScreenCapturer.requestPermission()

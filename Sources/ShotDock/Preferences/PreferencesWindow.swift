@@ -90,6 +90,16 @@ private struct GeneralPreferences: View {
                 }
                 .pickerStyle(.segmented)
             }
+            Section("Historial") {
+                Picker("Guardar en el historial", selection: $settings.historyLimit) {
+                    Text("Las últimas 50").tag(50)
+                    Text("Las últimas 200").tag(200)
+                    Text("Las últimas 1000").tag(1000)
+                    Text("Todas").tag(Int.max)
+                    Text("Nada (desactivado)").tag(0)
+                }
+                .onChange(of: settings.historyLimit) { LibraryStore.shared.applyLimit() }
+            }
             Section("Captura") {
                 Stepper("Retardo: \(settings.captureDelay) s", value: $settings.captureDelay, in: 1...30)
                 Toggle("Incluir la sombra al capturar ventanas", isOn: $settings.windowShadow)

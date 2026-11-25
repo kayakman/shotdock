@@ -121,18 +121,20 @@ final class CaptureCoordinator {
 
     /// What happens to every new capture, per the preferences.
     func finish(_ document: CaptureDocument) {
+        let itemID = LibraryStore.shared.add(document)
         var done: [String] = []
         if settings.copyAfterCapture, Pasteboard.copy(document.image, scale: document.scale) { done.append("Copiado") }
         if settings.saveAfterCapture {
             do {
                 let url = try save(document.image, scale: document.scale, date: document.createdAt)
+                if let itemID { LibraryStore.shared.markSaved(itemID, at: url) }
                 done.append("Guardado en \(url.deletingLastPathComponent().lastPathComponent)")
             } catch {
                 showError(error)
             }
         }
         if settings.openEditorAfterCapture {
-            openEditor(with: document)
+            openEditor(with: document, libraryItem: itemID)
         } else if !done.isEmpty {
             HUD.show(done.joined(separator: " · "), symbol: "checkmark.circle.fill")
         }
@@ -153,9 +155,16 @@ final class CaptureCoordinator {
         return url
     }
 
+    /// Reopens a capture from the history, or brings its editor forward.
+    func openEditor(libraryItem id: UUID) {
+        if let open = editors.first(where: { $0.libraryItemID == id }) { return open.show() }
+        guard let document = LibraryStore.shared.document(id) else { return }
+        openEditor(with: document, libraryItem: id)
+    }
+
     @discardableResult
-    func openEditor(with document: CaptureDocument) -> EditorWindowController {
-        let editor = EditorWindowController(document: document, coordinator: self)
+    func openEditor(with document: CaptureDocument, libraryItem: UUID? = nil) -> EditorWindowController {
+        let editor = EditorWindowController(document: document, coordinator: self, libraryItemID: libraryItem)
         editor.onClose = { [weak self] closed in self?.editors.removeAll { $0 === closed } }
         editors.append(editor)
         editor.show()

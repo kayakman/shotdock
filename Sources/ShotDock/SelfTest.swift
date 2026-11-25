@@ -38,6 +38,7 @@ final class SelfTest {
             case "modes": try await modes()
             case "prefs": try await prefs()
             case "measure": try await measure()
+            case "history": try await history()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -352,6 +353,55 @@ final class SelfTest {
         if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
         try await Task.sleep(for: .milliseconds(200))
         check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// Captures land in the history; editing from it persists; the gallery shows them.
+    private func history() async throws {
+        let settings = AppSettings.shared
+        let store = LibraryStore.shared
+        settings.openEditorAfterCapture = false
+        settings.copyAfterCapture = false
+        for (i, text) in ["Primera", "Segunda", "Tercera"].enumerated() {
+            let image = Self.testPattern(width: 900 + i * 200, height: 600, text: text)
+            app.coordinator.finish(CaptureDocument(image: image, scale: 2, createdAt: Date(timeIntervalSinceNow: Double(i - 3) * 3600)))
+        }
+        check(store.items.count == 3, "three captures in the history (\(store.items.count))")
+        guard let newest = store.items.first else { return }
+        check(newest.pixelWidth == 1300, "newest first")
+
+        // Edit from the history; closing writes the annotations back.
+        app.coordinator.openEditor(libraryItem: newest.id)
+        try await Task.sleep(for: .milliseconds(300))
+        guard let editor = app.coordinator.editors.last, let window = editor.window else { return fail("history item did not open") }
+        let at = { (x: CGFloat, y: CGFloat) in editor.canvas.convert(CGPoint(x: x, y: y), to: nil) }
+        editor.model.tool = .rectangle
+        drag(from: at(100, 100), to: at(600, 400), in: window)
+        editor.model.tool = .crop
+        drag(from: at(50, 50), to: at(1000, 500), in: window)
+        editor.close()
+        let updated = store.items.first { $0.id == newest.id }
+        check(updated?.annotationCount == 1 && updated?.pixelWidth == 950, "edits saved to the history (\(String(describing: updated)))")
+        app.coordinator.openEditor(libraryItem: newest.id)
+        try await Task.sleep(for: .milliseconds(200))
+        check(app.coordinator.editors.last?.model.document.annotations.count == 1, "reopening restores the annotations")
+        app.coordinator.openEditor(libraryItem: newest.id)
+        check(app.coordinator.editors.count == 1, "opening it again focuses the same editor")
+        app.coordinator.editors.last?.close()
+
+        app.showGallery()
+        try await Task.sleep(for: .milliseconds(600))
+        if let gallery = app.gallery, let window = gallery.window {
+            gallery.selection = [newest.id]
+            try await Task.sleep(for: .milliseconds(200))
+            try await snapshot(window, to: sibling("gallery"))
+            check(store.exportForDrag(newest.id).map { FileManager.default.fileExists(atPath: $0.path) } ?? false, "drag exports a PNG")
+        } else { fail("no gallery window") }
+
+        settings.historyLimit = 2
+        store.applyLimit()
+        check(store.items.count == 2, "history trimmed to the limit")
+        store.delete([newest.id])
+        check(store.items.count == 1 && store.items.first?.id != newest.id, "delete removes it")
     }
 
     /// Ruler, eyedropper and loupe, in the editor and on the frozen screen.

@@ -18,6 +18,7 @@ enum MainMenu {
 
         let file = NSMenu(title: "Archivo")
         file.addItem(item("Capturar área", #selector(AppDelegate.captureArea), target: target))
+        file.addItem(item("Capturas recientes", #selector(AppDelegate.showGallery), "y", [.command, .shift], target: target))
         file.addItem(.separator())
         file.addItem(item("Guardar", #selector(EditorWindowController.saveDocument(_:)), "s"))
         file.addItem(item("Guardar como…", #selector(EditorWindowController.saveDocumentAs(_:)), "s", [.command, .shift]))

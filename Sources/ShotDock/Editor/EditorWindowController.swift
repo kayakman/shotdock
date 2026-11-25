@@ -8,10 +8,13 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let canvas: CanvasView
     private let scrollView = NSScrollView()
     private weak var coordinator: CaptureCoordinator?
+    /// The history entry this editor writes its changes to.
+    let libraryItemID: UUID?
     var onClose: ((EditorWindowController) -> Void)?
 
-    init(document: CaptureDocument, coordinator: CaptureCoordinator? = nil) {
+    init(document: CaptureDocument, coordinator: CaptureCoordinator? = nil, libraryItemID: UUID? = nil) {
         self.coordinator = coordinator
+        self.libraryItemID = libraryItemID
         model = EditorModel(document: document)
         canvas = CanvasView(model: model)
         let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 640, height: 480),
@@ -24,7 +27,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         super.init(window: window)
         window.delegate = self
         buildContent()
-        model.onDocumentChange = { [weak self] in self?.canvas.syncGeometry() }
+        model.onDocumentChange = { [weak self] in
+            guard let self else { return }
+            canvas.syncGeometry()
+            if let libraryItemID { LibraryStore.shared.scheduleUpdate(libraryItemID, with: model.document) }
+        }
         sizeWindowToFit()
     }
 
@@ -101,6 +108,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         guard let coordinator, let image = model.flattened() else { return saveDocumentAs(sender) }
         do {
             let url = try coordinator.save(image, scale: model.document.scale, date: model.document.createdAt)
+            if let libraryItemID { LibraryStore.shared.markSaved(libraryItemID, at: url) }
             model.flash("Guardado: \(url.lastPathComponent)")
         } catch {
             window.map { NSAlert(error: error).beginSheetModal(for: $0) }
@@ -136,7 +144,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? { model.undoManager }
 
-    func windowWillClose(_ notification: Notification) { onClose?(self) }
+    func windowWillClose(_ notification: Notification) {
+        canvas.commitTextEditing()
+        if let libraryItemID { LibraryStore.shared.update(libraryItemID, with: model.document) }
+        onClose?(self)
+    }
 }
 
 /// Keeps a document smaller than the viewport centred instead of pinned to a corner.

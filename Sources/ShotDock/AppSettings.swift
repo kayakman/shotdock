@@ -21,6 +21,8 @@ final class AppSettings {
     var captureDelay: Int { didSet { defaults.set(captureDelay, forKey: "captureDelay") } }
     var windowShadow: Bool { didSet { defaults.set(windowShadow, forKey: "windowShadow") } }
     var colorFormat: ColorFormat { didSet { defaults.set(colorFormat.rawValue, forKey: "colorFormat") } }
+    /// How many captures the history keeps; 0 turns it off.
+    var historyLimit: Int { didSet { defaults.set(historyLimit, forKey: "historyLimit") } }
     /// Last selected area in AppKit global coordinates, for "repeat area".
     var lastArea: CGRect? {
         didSet { lastArea.map { defaults.set(NSStringFromRect($0), forKey: "lastArea") } ?? defaults.removeObject(forKey: "lastArea") }
@@ -39,6 +41,7 @@ final class AppSettings {
         captureDelay = defaults.object(forKey: "captureDelay") as? Int ?? 3
         windowShadow = defaults.object(forKey: "windowShadow") as? Bool ?? true
         colorFormat = defaults.string(forKey: "colorFormat").flatMap(ColorFormat.init(rawValue:)) ?? .hex
+        historyLimit = defaults.object(forKey: "historyLimit") as? Int ?? 200
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
     }
 
@@ -47,6 +50,9 @@ final class AppSettings {
         let name = "app.shotdock.ShotDock.selftest"
         UserDefaults().removePersistentDomain(forName: name)
         shared = AppSettings(defaults: UserDefaults(suiteName: name)!)
+        let library = FileManager.default.temporaryDirectory.appendingPathComponent("ShotDock Selftest Library")
+        try? FileManager.default.removeItem(at: library)
+        LibraryStore.shared = LibraryStore(root: library)
     }
 
     private func save<T: Encodable>(_ value: T, _ key: String) {
