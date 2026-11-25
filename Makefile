@@ -23,13 +23,15 @@ run: app
 test:
 	swift test
 
-# Captures the main display without user interaction and checks the PNG.
+# Runs a non-interactive check in the real app: capture (needs the Screen
+# Recording permission), area or editor. Fails if the log has a FAIL line.
+TEST ?= capture
 selftest: app
 	-pkill -x ShotDock
-	rm -f build/selftest.png build/selftest.log
-	open -W -n $(APP) --args --selftest capture $(CURDIR)/build/selftest.png
+	rm -f build/selftest*.png build/selftest.log
+	open -W -n $(APP) --args --selftest $(TEST) $(CURDIR)/build/selftest.png
 	@cat build/selftest.log
-	@test -s build/selftest.png && sips -g pixelWidth -g pixelHeight build/selftest.png
+	@! grep -q '^FAIL' build/selftest.log
 
 signing-cert:
 	scripts/make-signing-cert.sh

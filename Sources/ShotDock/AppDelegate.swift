@@ -1,13 +1,20 @@
 import AppKit
+import Carbon.HIToolbox
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    let coordinator = CaptureCoordinator()
     private var statusItem: NSStatusItem?
     private let permissionItem = NSMenuItem()
 
+    private enum HotKey: UInt32 { case captureArea = 1 }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if SelfTest.runIfRequested() { return }
+        NSApp.mainMenu = MainMenu.build(target: self)
+        if SelfTest.runIfRequested(app: self) { return }
         setUpStatusItem()
+        HotKeyCenter.shared.register(id: HotKey.captureArea.rawValue, keyCode: kVK_ANSI_2,
+                                     modifiers: cmdKey | shiftKey) { [weak self] in self?.captureArea() }
         if !ScreenCapturer.hasPermission { ScreenCapturer.requestPermission() }
     }
 
@@ -17,6 +24,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let menu = NSMenu()
         menu.delegate = self
+        let capture = NSMenuItem(title: "Capturar área", action: #selector(captureArea), keyEquivalent: "2")
+        capture.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(capture)
+        menu.addItem(.separator())
         menu.addItem(permissionItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Acerca de ShotDock", action: #selector(showAbout), keyEquivalent: ""))
@@ -38,13 +49,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    @objc func captureArea() { coordinator.captureArea() }
+
     @objc private func openScreenRecordingSettings() {
         ScreenCapturer.requestPermission()
-        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
-        NSWorkspace.shared.open(url)
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
     }
 
-    @objc private func showAbout() {
+    @objc func showAbout() {
         NSApp.activate()
         NSApp.orderFrontStandardAboutPanel(nil)
     }

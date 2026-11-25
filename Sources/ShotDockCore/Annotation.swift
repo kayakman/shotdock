@@ -85,5 +85,5 @@ public struct Annotation: Identifiable, Codable, Equatable, Sendable {
 }
 
 extension AnnotationStyle {
-    var arrowHeadLength: CGFloat { max(lineWidth * 3.5, 14) }
+    var arrowHeadLength: CGFloat { max(lineWidth * 4.5, 16) }
 }
