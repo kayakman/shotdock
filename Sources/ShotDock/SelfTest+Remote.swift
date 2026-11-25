@@ -438,3 +438,58 @@ extension SelfTest {
         check(run.status == 0 && newID != id && abs(box.width - 200 / scale) < 1, "a file becomes a capture; preview positions are scaled (\(box))")
     }
 }
+
+extension SelfTest {
+    /// Ruler, eyedropper and OCR from the CLI on a drawn image.
+    func cliInspect() async throws {
+        AppSettings.shared.agentControlEnabled = true
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        // White, an orange 240 × 120 box at (100, 80), a line of text and a QR code.
+        let context = CGContext(data: nil, width: 900, height: 600, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.flipVertically(height: 600)
+        context.setFillColor(gray: 1, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 900, height: 600))
+        context.setFillColor(red: 1, green: 90.0 / 255, blue: 31.0 / 255, alpha: 1)
+        context.fill(CGRect(x: 100, y: 80, width: 240, height: 120))
+        TextLayout(string: "Factura 2026", fontSize: 40, color: CGColor(gray: 0, alpha: 1)).draw(at: CGPoint(x: 80, y: 320), in: context)
+        let qr = CIFilter(name: "CIQRCodeGenerator", parameters: ["inputMessage": Data("https://shotdock.app".utf8)])!.outputImage!
+            .transformed(by: CGAffineTransform(scaleX: 8, y: 8))
+        let qrImage = CIContext().createCGImage(qr, from: qr.extent)!
+        context.drawImageTopLeft(qrImage, in: CGRect(x: 560, y: 260, width: CGFloat(qrImage.width), height: CGFloat(qrImage.height)))
+        let file = output.deletingLastPathComponent().appendingPathComponent("selftest-inspect.png")
+        try ImageEncoding.write(context.makeImage()!, to: file, scale: 2)
+
+        var run = try await shotdock(["measure", file.path, "--at", "150,100", "--json"])
+        check(run.status == 0 && run.json?["width"] == 240 && run.json?["height"] == 120 && run.json?["width_pt"] == 120,
+              "measure finds the box (\(run.json?["width"] ?? nil)×\(run.json?["height"] ?? nil))")
+        check(run.json?["rect"]?.rect == CGRect(x: 100, y: 80, width: 240, height: 120), "and where it is")
+        NSPasteboard.general.clearContents()
+        run = try await shotdock(["color", "last", "--at", "150,100", "--copy", "--json"])
+        check(run.json?["hex"] == "#FF5A1F" && run.json?["rgb"] == "rgb(255, 90, 31)", "eyedropper reads the colour")
+        check(NSPasteboard.general.string(forType: .string) == "#FF5A1F", "--copy uses the preferences' format")
+        run = try await shotdock(["color", "last", "--at", "2000,10", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "invalid_params", "points outside the image are refused")
+
+        run = try await shotdock(["ocr", "last", "--copy", "--json"])
+        let ocr = run.json ?? [:]
+        check(run.status == 0 && ocr["text"]?.stringValue?.contains("Factura 2026") == true, "ocr reads the text")
+        let line = ocr["lines"]?.arrayValue?.first { $0["text"]?.stringValue?.contains("Factura") == true }
+        check((line?["box"]?.rect?.minY ?? 0) > 300 && (line?["box"]?.rect?.maxY ?? 999) < 380, "lines come with their box (\(line?["box"] ?? nil))")
+        check(ocr["codes"]?[0]?["payload"] == "https://shotdock.app" && ocr["codes"]?[0]?["symbology"]?.stringValue?.contains("QR") == true,
+              "and the QR code with its content")
+        check(NSPasteboard.general.string(forType: .string) == "https://shotdock.app", "--copy copies the QR content, as the shortcut")
+        run = try await shotdock(["history", "list", "--search", "factura", "--json"])
+        check(run.json?["total"] == 1, "the recognised text makes the capture findable")
+
+        if ScreenCapturer.hasPermission, (try? await ScreenCapturer.snapshotAllDisplays()) != nil {
+            run = try await shotdock(["color", "--at", "5,5", "--json"])
+            check(run.status == 0 && run.json?["hex"]?.stringValue?.hasPrefix("#") == true, "eyedropper on the screen")
+            run = try await shotdock(["measure", "--at", "300,300", "--json"])
+            check(run.status == 0 && run.json?["screen_rect"]?.rect != nil, "ruler on the screen")
+        } else {
+            note("screen not capturable: screen eyedropper and ruler not checked")
+        }
+    }
+}

@@ -52,6 +52,7 @@ final class SelfTest {
             case "mcp": try await mcp()
             case "cli-history": try await cliHistory()
             case "cli-edit": try await cliEdit()
+            case "cli-inspect": try await cliInspect()
             default: fail("unknown selftest \(name)")
             }
         } catch {

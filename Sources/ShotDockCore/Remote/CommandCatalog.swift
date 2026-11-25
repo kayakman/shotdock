@@ -3,7 +3,7 @@ import Foundation
 /// The commands, in the order help lists them. Each phase of the CLI adds
 /// its own; the app answers every `.app` command.
 public enum CommandCatalog {
-    public static let all: [CommandSpec] = general + screens + captures + history + editing
+    public static let all: [CommandSpec] = general + screens + captures + history + editing + inspection
 
     public static func command(_ name: String) -> CommandSpec? { all.first { $0.name == name } }
 
@@ -250,5 +250,39 @@ public enum CommandCatalog {
                 ParamSpec("aspect", .choice(["auto", "1:1", "16:9", "4:3", "4:5"]), "Shape of the canvas"),
                 ParamSpec("off", .boolean, "Remove the backdrop"),
             ], mcp: "set_backdrop", returnsImage: true),
+    ]
+
+    // MARK: Measure, colour, OCR
+
+    static let optionalTarget = ParamSpec("target", .reference, "Capture (history id, last…) or image file; without it, the screen", positional: true)
+
+    static let inspection: [CommandSpec] = [
+        CommandSpec("measure", "Pixel ruler: the size of the area of the same colour around a point (a button, a gap…)", details: """
+            On a capture, `at` is in pixels of the edited image; on the screen (no target), in points from the top-left of
+            the main display. Returns the box in both pixels and points.
+            """, params: [
+                optionalTarget,
+                ParamSpec("at", .point, "Where to measure", required: true),
+                ParamSpec("tolerance", .integer, "How different (0–255) a pixel may be and still count as the same colour", default: 24),
+            ], mcp: "measure", readOnly: true),
+        CommandSpec("color", "Eyedropper: the colour of a pixel, as HEX and RGB", details: """
+            On a capture, `at` is in pixels of the edited image; on the screen (no target), in points.
+            """, params: [
+                optionalTarget,
+                ParamSpec("at", .point, "Pixel to read", required: true),
+                ParamSpec("copy", .boolean, "Copy it, in the format set in the preferences"),
+            ], mcp: "pick_color", readOnly: true),
+        CommandSpec("ocr", "Recognise the text and the QR codes or barcodes of a capture or of the screen", details: """
+            Give a capture, a screen area (rect, in points) or let the user select one (interactive). Returns the text,
+            each line with its box (pixels from the top-left of the image) and confidence, and the codes with their
+            content and box. The text is kept with the capture so the history can be searched by it.
+            """, params: [
+                optionalTarget,
+                ParamSpec("rect", .rect, "Screen area in points, when there is no target"),
+                ParamSpec("interactive", .boolean, "Let the user select the area"),
+                ParamSpec("languages", .strings, "Languages to read, e.g. es-ES, en-US (default: Spanish and English)"),
+                ParamSpec("join", .boolean, "Join the lines into one paragraph (default: as in the preferences)"),
+                ParamSpec("copy", .boolean, "Copy the text (or the QR content) to the clipboard"),
+            ], mcp: "recognize_text", readOnly: true),
     ]
 }
