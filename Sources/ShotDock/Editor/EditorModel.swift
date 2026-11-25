@@ -3,7 +3,7 @@ import Observation
 import ShotDockCore
 
 enum EditorTool: String, CaseIterable, Identifiable {
-    case arrow, rectangle, text, crop
+    case arrow, rectangle, ellipse, highlight, text, step, blur, pixelate, eraser, crop
 
     var id: String { rawValue }
 
@@ -11,7 +11,13 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .arrow: "Flecha"
         case .rectangle: "Rectángulo"
+        case .ellipse: "Óvalo"
+        case .highlight: "Resaltador"
         case .text: "Texto"
+        case .step: "Paso numerado"
+        case .blur: "Desenfocar"
+        case .pixelate: "Pixelar"
+        case .eraser: "Borrador inteligente"
         case .crop: "Recortar"
         }
     }
@@ -20,7 +26,13 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .arrow: "arrow.up.right"
         case .rectangle: "rectangle"
+        case .ellipse: "circle"
+        case .highlight: "highlighter"
         case .text: "textformat"
+        case .step: "1.circle.fill"
+        case .blur: "drop.halffull"
+        case .pixelate: "checkerboard.rectangle"
+        case .eraser: "eraser"
         case .crop: "crop"
         }
     }
@@ -30,10 +42,22 @@ enum EditorTool: String, CaseIterable, Identifiable {
         switch self {
         case .arrow: "a"
         case .rectangle: "r"
+        case .ellipse: "o"
+        case .highlight: "h"
         case .text: "t"
+        case .step: "n"
+        case .blur: "b"
+        case .pixelate: "p"
+        case .eraser: "e"
         case .crop: "c"
         }
     }
+
+    /// Tools whose marks take the selected colour.
+    var usesColor: Bool { ![.blur, .pixelate, .eraser, .crop].contains(self) }
+
+    /// Each tool remembers its colour; the highlighter starts yellow.
+    var defaultColor: RGBAColor { self == .highlight ? .yellow : .red }
 }
 
 enum LineWeight: CGFloat, CaseIterable, Identifiable {
@@ -56,8 +80,13 @@ final class EditorModel {
         didSet { onDocumentChange?() }
     }
     var tool: EditorTool = .arrow
-    var color: RGBAColor = .red {
-        didSet { restyleSelection { $0.color = color } }
+    private var colorsByTool: [EditorTool: RGBAColor] = [:]
+    var color: RGBAColor {
+        get { colorsByTool[tool] ?? tool.defaultColor }
+        set {
+            colorsByTool[tool] = newValue
+            restyleSelection { $0.color = newValue }
+        }
     }
     var weight: LineWeight = .medium {
         didSet {
@@ -76,6 +105,8 @@ final class EditorModel {
 
     init(document: CaptureDocument) {
         self.document = document
+        // Each edit is its own undo step, even when several happen in one event.
+        undoManager.groupsByEvent = false
     }
 
     /// Style for new annotations; sizes scale with the capture so marks look
@@ -90,14 +121,16 @@ final class EditorModel {
 
     func annotation(at point: CGPoint) -> Annotation? {
         let tolerance = 4 * document.scale
-        return document.annotations.last { $0.hitTest(point, tolerance: tolerance) }
+        // Vector marks are drawn above pixel effects, so they win the click.
+        return document.annotations.last { !$0.isPixelEffect && $0.hitTest(point, tolerance: tolerance) }
+            ?? document.annotations.last { $0.isPixelEffect && $0.hitTest(point, tolerance: tolerance) }
     }
 
     // MARK: Edits (all undoable)
 
     func add(_ annotation: Annotation) {
         guard !annotation.isDegenerate else { return }
-        perform("Añadir \(tool.title.lowercased())") { $0.annotations.append(annotation) }
+        perform(tool.title) { $0.annotations.append(annotation) }
         selectedID = annotation.id
     }
 
@@ -139,7 +172,9 @@ final class EditorModel {
     private func perform(_ actionName: String, _ change: (inout CaptureDocument) -> Void) {
         let before = (document.annotations, document.crop)
         change(&document)
+        undoManager.beginUndoGrouping()
         registerUndo(restoring: before, actionName: actionName)
+        undoManager.endUndoGrouping()
     }
 
     private func registerUndo(restoring state: ([Annotation], CGRect?), actionName: String) {

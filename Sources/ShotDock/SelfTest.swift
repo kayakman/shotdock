@@ -1,4 +1,5 @@
 import AppKit
+import ScreenCaptureKit
 import ShotDockCore
 
 /// Non-interactive checks run with `ShotDock --selftest <name> <output>`, so a
@@ -126,7 +127,7 @@ final class SelfTest {
 
     /// Draws, moves, edits text, undoes and crops in a real editor window.
     private func editor() async throws {
-        let image = Self.testPattern(width: 1200, height: 800)
+        let image = Self.testPattern(width: 1200, height: 800, text: "Contraseña: hunter2")
         let editor = app.coordinator.openEditor(with: CaptureDocument(image: image, scale: 2))
         try await Task.sleep(for: .milliseconds(300))
         guard let window = editor.window else { return fail("no editor window") }
@@ -179,7 +180,40 @@ final class SelfTest {
         check(model.document.annotations.count == 2, "Delete removes the selected annotation")
         model.undoManager.undo()
 
-        render(window.contentView!, to: sibling("window"))
+        // Phase 3 tools.
+        let before = model.document.annotations.count
+        model.tool = .ellipse
+        drag(from: at(700, 500), to: at(900, 650), in: window)
+        model.tool = .highlight
+        drag(from: at(100, 380), to: at(450, 430), in: window)
+        model.tool = .step
+        for x in [1000, 1080] {
+            send(.leftMouseDown, at: at(CGFloat(x), 120), to: window)
+            send(.leftMouseUp, at: at(CGFloat(x), 120), to: window)
+        }
+        let steps = model.document.annotations.compactMap { a -> Int? in if case let .step(_, n) = a.shape { n } else { nil } }
+        check(steps == [1, 2], "steps number themselves (\(steps))")
+        model.tool = .blur
+        drag(from: at(40, 660), to: at(300, 740), in: window)
+        model.tool = .pixelate
+        drag(from: at(320, 660), to: at(560, 740), in: window)
+        model.tool = .eraser
+        drag(from: at(580, 660), to: at(820, 740), in: window)
+        check(model.document.annotations.count == before + 7, "ellipse, highlight, 2 steps, blur, pixelate, eraser added")
+
+        // Resize the ellipse by its bottom-right handle.
+        if let ellipse = model.document.annotations.first(where: { if case .ellipse = $0.shape { true } else { false } }) {
+            model.selectedID = ellipse.id
+            canvas.needsDisplay = true
+            drag(from: at(900, 650), to: at(950, 700), in: window)
+            let box = model.document.annotations.first { $0.id == ellipse.id }?.box
+            check(box == CGRect(x: 700, y: 500, width: 250, height: 200), "handle resizes the ellipse (\(String(describing: box)))")
+            model.undoManager.undo()
+            check(model.document.annotations.first { $0.id == ellipse.id }?.box == CGRect(x: 700, y: 500, width: 200, height: 150), "resize undoes in one step")
+            model.undoManager.redo()
+        }
+        try await Task.sleep(for: .milliseconds(200))
+        try await snapshot(window, to: sibling("window"))
 
         model.tool = .crop
         drag(from: at(50, 50), to: at(1000, 700), in: window)
@@ -396,6 +430,18 @@ final class SelfTest {
         window.sendEvent(event)
     }
 
+    /// Real screenshot of one of our windows (needs Screen Recording).
+    private func snapshot(_ window: NSWindow, to url: URL) async throws {
+        guard ScreenCapturer.hasPermission else { return render(window.contentView!, to: url) }
+        let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+        guard let scWindow = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
+            return fail("window not found for snapshot")
+        }
+        let (image, scale) = try await ScreenCapturer.capture(window: scWindow, shadow: false)
+        try ImageEncoding.write(image, to: url, scale: scale)
+        note("captured \(url.lastPathComponent)")
+    }
+
     /// Saves what a view draws, so the UI can be inspected without screen capture.
     private func render(_ view: NSView, to url: URL) {
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
@@ -405,7 +451,7 @@ final class SelfTest {
     }
 
     /// A gradient with a grid, easy to recognise in rendered output.
-    static func testPattern(width: Int, height: Int) -> CGImage {
+    static func testPattern(width: Int, height: Int, text: String? = nil) -> CGImage {
         let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                 space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
@@ -417,6 +463,13 @@ final class SelfTest {
         context.setStrokeColor(CGColor(gray: 0.6, alpha: 1))
         for x in stride(from: 0, to: width, by: 100) { context.stroke(CGRect(x: x, y: 0, width: 1, height: height)) }
         for y in stride(from: 0, to: height, by: 100) { context.stroke(CGRect(x: 0, y: y, width: width, height: 1)) }
+        if let text {
+            context.flipVertically(height: CGFloat(height))
+            for (i, x) in [60, 340, 600].enumerated() {
+                TextLayout(string: text, fontSize: 22 + CGFloat(i) * 2, color: CGColor(gray: 0.1, alpha: 1))
+                    .draw(at: CGPoint(x: CGFloat(x), y: 685), in: context)
+            }
+        }
         return context.makeImage()!
     }
 }

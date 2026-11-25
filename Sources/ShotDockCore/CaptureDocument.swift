@@ -12,6 +12,11 @@ public struct CaptureDocument {
     public var crop: CGRect?
     public var createdAt: Date
 
+    /// Number for the next step marker.
+    public var nextStepNumber: Int {
+        (annotations.compactMap { if case let .step(_, n) = $0.shape { n } else { nil } }.max() ?? 0) + 1
+    }
+
     public init(image: CGImage, scale: CGFloat, createdAt: Date = Date()) {
         self.image = image
         self.scale = scale
@@ -36,7 +41,7 @@ public struct CaptureDocument {
         context.flipVertically(height: rect.height)
         context.translateBy(x: -rect.minX, y: -rect.minY)
         context.drawImageTopLeft(image, in: fullRect)
-        AnnotationRenderer.draw(annotations, in: context)
+        AnnotationRenderer.draw(annotations, in: context, source: image)
         return context.makeImage()
     }
 }

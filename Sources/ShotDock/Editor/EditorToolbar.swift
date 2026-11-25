@@ -5,6 +5,14 @@ struct EditorToolbar: View {
     @Bindable var model: EditorModel
     var onSave: () -> Void
 
+    private var customColor: Binding<Color> {
+        Binding(get: { Color(cgColor: model.color.cgColor) },
+                set: { color in
+                    guard let c = NSColor(color).usingColorSpace(.sRGB) else { return }
+                    model.color = RGBAColor(red: c.redComponent, green: c.greenComponent, blue: c.blueComponent)
+                })
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             Picker("Herramienta", selection: $model.tool) {
@@ -22,13 +30,19 @@ struct EditorToolbar: View {
                 ForEach(RGBAColor.palette, id: \.self) { color in
                     ColorSwatch(color: color, selected: color == model.color) { model.color = color }
                 }
+                ColorPicker("Otro color", selection: customColor, supportsOpacity: false)
+                    .labelsHidden()
+                    .help("Otro color")
             }
+            .disabled(!model.tool.usesColor)
+            .opacity(model.tool.usesColor ? 1 : 0.35)
 
-            Picker("Grosor", selection: $model.weight) {
+            Picker(model.tool.usesColor ? "Grosor" : "Intensidad", selection: $model.weight) {
                 ForEach(LineWeight.allCases) { Text($0.title).tag($0) }
             }
             .labelsHidden()
             .fixedSize()
+            .help(model.tool.usesColor ? "Grosor y tamaño de letra" : "Intensidad del efecto")
 
             Spacer(minLength: 8)
 

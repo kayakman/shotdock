@@ -10,6 +10,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     private enum Drag {
         case drawing(start: CGPoint, annotation: Annotation)
         case moving(start: CGPoint, original: Annotation)
+        case resizing(handle: Int, original: Annotation)
         case cropping(start: CGPoint, rect: CGRect)
     }
 
@@ -53,11 +54,11 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         let document = model.document
         context.interpolationQuality = (enclosingScrollView?.magnification ?? 1) > 1.5 ? .none : .high
         context.drawImageTopLeft(document.image, in: document.fullRect)
-        AnnotationRenderer.draw(document.annotations.filter { $0.id != editingText?.id }, in: context)
+        AnnotationRenderer.draw(document.annotations.filter { $0.id != editingText?.id }, in: context, source: document.image)
 
         switch drag {
         case let .drawing(_, annotation):
-            AnnotationRenderer.draw(annotation, in: context)
+            AnnotationRenderer.draw(annotation, in: context, source: document.image)
         case let .cropping(_, rect):
             context.setFillColor(NSColor.black.withAlphaComponent(0.45).cgColor)
             context.addRect(bounds)
@@ -66,7 +67,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             context.setStrokeColor(NSColor.white.cgColor)
             context.setLineWidth(pixelsPerScreenPoint)
             context.stroke(rect)
-        case .moving, nil:
+        case .moving, .resizing, nil:
             break
         }
 
@@ -75,8 +76,22 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             context.setStrokeColor(NSColor.controlAccentColor.cgColor)
             context.setLineWidth(unit)
             context.setLineDash(phase: 0, lengths: [4 * unit, 3 * unit])
-            context.stroke(selected.bounds.insetBy(dx: -3 * unit, dy: -3 * unit))
+            if selected.handles.isEmpty {
+                context.stroke(selected.bounds.insetBy(dx: -3 * unit, dy: -3 * unit))
+            }
+            context.setLineDash(phase: 0, lengths: [])
+            for handle in selected.handles {
+                let size = handleSize * 0.8
+                let rect = CGRect(x: handle.x - size / 2, y: handle.y - size / 2, width: size, height: size)
+                context.setFillColor(NSColor.white.cgColor)
+                context.fillEllipse(in: rect)
+                context.strokeEllipse(in: rect)
+            }
         }
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(visibleRect, cursor: .crosshair)
     }
 
     // MARK: Mouse
@@ -90,6 +105,10 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         window?.makeFirstResponder(self)
         let point = location(of: event)
 
+        if let selected = model.selected, let handle = handleIndex(of: selected, near: point) {
+            drag = .resizing(handle: handle, original: selected)
+            return
+        }
         if model.tool != .crop, let hit = model.annotation(at: point) {
             model.selectedID = hit.id
             if event.clickCount == 2, case .text = hit.shape {
@@ -101,15 +120,28 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         }
         model.selectedID = nil
 
+        let style = model.currentStyle
+        let box = CGRect(origin: point, size: .zero)
         switch model.tool {
         case .arrow:
-            drag = .drawing(start: point, annotation: Annotation(shape: .arrow(from: point, to: point), style: model.currentStyle))
+            drag = .drawing(start: point, annotation: Annotation(shape: .arrow(from: point, to: point), style: style))
         case .rectangle:
-            drag = .drawing(start: point, annotation: Annotation(shape: .rectangle(CGRect(origin: point, size: .zero)), style: model.currentStyle))
+            drag = .drawing(start: point, annotation: Annotation(shape: .rectangle(box), style: style))
+        case .ellipse:
+            drag = .drawing(start: point, annotation: Annotation(shape: .ellipse(box), style: style))
+        case .highlight:
+            drag = .drawing(start: point, annotation: Annotation(shape: .highlight(box), style: style))
+        case .blur:
+            drag = .drawing(start: point, annotation: Annotation(shape: .blur(box), style: style))
+        case .pixelate:
+            drag = .drawing(start: point, annotation: Annotation(shape: .pixelate(box), style: style))
+        case .eraser:
+            drag = .drawing(start: point, annotation: Annotation(shape: .erase(box), style: style))
+        case .step:
+            model.add(Annotation(shape: .step(center: point, number: model.document.nextStepNumber), style: style))
         case .crop:
-            drag = .cropping(start: point, rect: CGRect(origin: point, size: .zero))
+            drag = .cropping(start: point, rect: box)
         case .text:
-            let style = model.currentStyle
             let origin = CGPoint(x: point.x, y: point.y - style.fontSize * 0.6)
             beginTextEditing(Annotation(shape: .text(origin: origin, string: ""), style: style))
         }
@@ -121,20 +153,19 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         switch drag {
         case let .drawing(start, annotation):
             var updated = annotation
-            switch annotation.shape {
-            case .arrow:
+            if case .arrow = annotation.shape {
                 if event.modifierFlags.contains(.shift) { point = snapTo45Degrees(point, from: start) }
                 updated.shape = .arrow(from: start, to: point)
-            case .rectangle:
+            } else if annotation.box != nil {
                 if event.modifierFlags.contains(.shift) { point = square(point, from: start) }
-                updated.shape = .rectangle(CGRect(corner: start, corner: point))
-            case .text:
-                break
+                updated = annotation.withBox(CGRect(corner: start, corner: point))
             }
             drag = .drawing(start: start, annotation: updated)
         case let .moving(start, original):
             let moved = original.offsetBy(dx: point.x - start.x, dy: point.y - start.y)
             model.replaceWithoutUndo(moved)
+        case let .resizing(handle, original):
+            model.replaceWithoutUndo(original.movingHandle(handle, to: point))
         case let .cropping(start, _):
             drag = .cropping(start: start, rect: CGRect(corner: start, corner: point).intersection(bounds))
         case nil:
@@ -149,15 +180,27 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         case let .drawing(_, annotation):
             model.add(annotation)
         case let .moving(_, original):
-            if let moved = model.selected, moved != original {
-                model.replaceWithoutUndo(original)
-                model.replace(moved, actionName: "Mover")
-            }
+            commitLiveEdit(from: original, actionName: "Mover")
+        case let .resizing(_, original):
+            commitLiveEdit(from: original, actionName: "Cambiar tamaño")
         case let .cropping(_, rect):
             model.crop(to: rect)
         case nil:
             break
         }
+    }
+
+    /// Turns a live drag into one undo step.
+    private func commitLiveEdit(from original: Annotation, actionName: String) {
+        guard let edited = model.document.annotations.first(where: { $0.id == original.id }), edited != original else { return }
+        model.replaceWithoutUndo(original)
+        model.replace(edited, actionName: actionName)
+    }
+
+    private var handleSize: CGFloat { 9 * pixelsPerScreenPoint }
+
+    private func handleIndex(of annotation: Annotation, near point: CGPoint) -> Int? {
+        annotation.handles.firstIndex { $0.distance(to: point) <= handleSize }
     }
 
     private func snapTo45Degrees(_ point: CGPoint, from start: CGPoint) -> CGPoint {
