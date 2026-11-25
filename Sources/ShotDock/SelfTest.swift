@@ -1,4 +1,5 @@
 import AppKit
+import CoreImage
 import ScreenCaptureKit
 import ShotDockCore
 
@@ -39,6 +40,7 @@ final class SelfTest {
             case "prefs": try await prefs()
             case "measure": try await measure()
             case "history": try await history()
+            case "pin-ocr": try await pinAndOCR()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -353,6 +355,88 @@ final class SelfTest {
         if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
         try await Task.sleep(for: .milliseconds(200))
         check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// Pinned images, OCR from the shortcut and from the editor, QR codes.
+    private func pinAndOCR() async throws {
+        let coordinator = app.coordinator
+        let image = Self.testPattern(width: 800, height: 400, text: "Fijada")
+        let pin = coordinator.pin(image, scale: 2)
+        try await Task.sleep(for: .milliseconds(300))
+        guard let window = pin.window else { return fail("no pin window") }
+        check(window.level == .floating && window.isVisible, "pin floats above other windows")
+        check(window.frame.size == CGSize(width: 400, height: 200), "pin shows at point size (\(window.frame.size))")
+        if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                                        context: nil, characters: "5", charactersIgnoringModifiers: "5", isARepeat: false, keyCode: 23) {
+            window.contentView?.keyDown(with: event)
+        }
+        check(abs(window.alphaValue - 0.5) < 0.01, "key 5 sets 50 % opacity")
+        pin.setZoom(2)
+        check(window.frame.size == CGSize(width: 800, height: 400), "zoom 200 %")
+        pin.opacity = 1
+        try await snapshot(window, to: sibling("pin"))
+        pin.clickThrough = true
+        check(window.ignoresMouseEvents, "click-through")
+        coordinator.restorePinClicks()
+        check(!window.ignoresMouseEvents, "clicks restored")
+        sendKey(53, to: window)
+        try await Task.sleep(for: .milliseconds(200))
+        check(coordinator.pins.isEmpty, "Esc closes the pin")
+
+        // Global OCR over a frozen screen with text and a QR code.
+        let screen = NSScreen.main!
+        let scale = screen.backingScaleFactor
+        let w = Int(screen.frame.width * scale), h = Int(screen.frame.height * scale)
+        let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.setFillColor(gray: 1, alpha: 1)
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        ctx.flipVertically(height: CGFloat(h))
+        TextLayout(string: "Hola desde ShotDock", fontSize: 28 * scale, color: CGColor(gray: 0, alpha: 1))
+            .draw(at: CGPoint(x: 100 * scale, y: 100 * scale), in: ctx)
+        let qrPayload = "https://github.com/kayakman/shotdock"
+        let qr = CIFilter(name: "CIQRCodeGenerator", parameters: ["inputMessage": Data(qrPayload.utf8)])!.outputImage!
+            .transformed(by: CGAffineTransform(scaleX: 6 * scale, y: 6 * scale))
+        let qrImage = CIContext().createCGImage(qr, from: qr.extent)!
+        ctx.drawImageTopLeft(qrImage, in: CGRect(x: 100 * scale, y: 300 * scale, width: CGFloat(qrImage.width), height: CGFloat(qrImage.height)))
+        let snapshotImage = DisplaySnapshot(displayID: screen.displayID, image: ctx.makeImage()!, frame: screen.frame, scale: scale)
+
+        coordinator.onRecognized = { [weak self] image, result in
+            guard let self else { return }
+            note("recognised \(image.width)x\(image.height): \(result.lines) \(result.codes)")
+            try? ImageEncoding.write(image, to: sibling("ocr-input-\(image.width)"))
+        }
+        for (rect, expected) in [(CGRect(x: 80, y: 80, width: 420, height: 80), "Hola desde ShotDock"),
+                                 (CGRect(x: 80, y: 280, width: CGFloat(qrImage.width) / scale + 40, height: CGFloat(qrImage.height) / scale + 40), qrPayload)] {
+            NSPasteboard.general.clearContents()
+            coordinator.beginSelection(over: [snapshotImage], purpose: .recognize)
+            try await Task.sleep(for: .milliseconds(300))
+            guard let view = coordinator.selection?.selectionViews.first, let overlay = view.window else { return fail("no overlay") }
+            drag(from: view.convert(rect.origin, to: nil), to: view.convert(CGPoint(x: rect.maxX, y: rect.maxY), to: nil), in: overlay)
+            let started = Date()
+            while NSPasteboard.general.string(forType: .string) == nil, Date().timeIntervalSince(started) < 30 {
+                try await Task.sleep(for: .milliseconds(200))
+            }
+            note("OCR took \(String(format: "%.1f", Date().timeIntervalSince(started))) s")
+            let copied = NSPasteboard.general.string(forType: .string)
+            check(copied == expected, "OCR copies \"\(copied ?? "-")\"")
+            check(coordinator.editors.isEmpty, "OCR does not open an editor")
+        }
+
+        // OCR from the editor shows a sheet.
+        let editor = coordinator.openEditor(with: CaptureDocument(image: snapshotImage.image.cropping(to: CGRect(x: 0, y: 0, width: 1400, height: 1400))!, scale: scale))
+        try await Task.sleep(for: .milliseconds(300))
+        editor.recognizeText(nil)
+        let started = Date()
+        while editor.window?.attachedSheet == nil, Date().timeIntervalSince(started) < 30 { try await Task.sleep(for: .milliseconds(200)) }
+        check(editor.window?.attachedSheet != nil, "editor shows the recognised text")
+        try ImageEncoding.write(editor.model.flattened()!, to: sibling("ocr-editor"))
+        let editorResult = try await TextRecognition.recognize(editor.model.flattened()!)
+        check(editorResult.lines == ["Hola desde ShotDock"] && editorResult.codes == [qrPayload],
+              "small text and QR found in a large capture (\(editorResult.lines), \(editorResult.codes))")
+        if let sheet = editor.window?.attachedSheet { try await snapshot(sheet, to: sibling("ocr-sheet")) }
+        editor.window?.attachedSheet.map { editor.window?.endSheet($0) }
+        editor.close()
     }
 
     /// Captures land in the history; editing from it persists; the gallery shows them.

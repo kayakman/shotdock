@@ -23,6 +23,8 @@ final class AppSettings {
     var colorFormat: ColorFormat { didSet { defaults.set(colorFormat.rawValue, forKey: "colorFormat") } }
     /// How many captures the history keeps; 0 turns it off.
     var historyLimit: Int { didSet { defaults.set(historyLimit, forKey: "historyLimit") } }
+    /// OCR joins the recognised lines into one paragraph.
+    var ocrJoinLines: Bool { didSet { defaults.set(ocrJoinLines, forKey: "ocrJoinLines") } }
     /// Last selected area in AppKit global coordinates, for "repeat area".
     var lastArea: CGRect? {
         didSet { lastArea.map { defaults.set(NSStringFromRect($0), forKey: "lastArea") } ?? defaults.removeObject(forKey: "lastArea") }
@@ -42,6 +44,7 @@ final class AppSettings {
         windowShadow = defaults.object(forKey: "windowShadow") as? Bool ?? true
         colorFormat = defaults.string(forKey: "colorFormat").flatMap(ColorFormat.init(rawValue:)) ?? .hex
         historyLimit = defaults.object(forKey: "historyLimit") as? Int ?? 200
+        ocrJoinLines = defaults.object(forKey: "ocrJoinLines") as? Bool ?? false
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
     }
 

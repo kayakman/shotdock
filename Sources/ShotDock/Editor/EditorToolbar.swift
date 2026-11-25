@@ -4,6 +4,8 @@ import SwiftUI
 struct EditorToolbar: View {
     @Bindable var model: EditorModel
     var onSave: () -> Void
+    var onPin: () -> Void = {}
+    var onRecognize: () -> Void = {}
 
     private var customColor: Binding<Color> {
         Binding(get: { Color(cgColor: model.color.cgColor) },
@@ -52,6 +54,16 @@ struct EditorToolbar: View {
                     .foregroundStyle(.secondary)
                     .transition(.opacity)
             }
+
+            Button(action: onRecognize) {
+                Image(systemName: "text.viewfinder")
+            }
+            .help("Reconocer texto y códigos QR")
+
+            Button(action: onPin) {
+                Image(systemName: "pin")
+            }
+            .help("Fijar encima de todo (⌘P)")
 
             Button {
                 model.undoManager.undo()

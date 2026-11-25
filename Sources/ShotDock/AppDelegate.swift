@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Actions that already work; the rest keep their shortcut for later phases.
     static let availableActions: Set<ShortcutAction> = [
-        .captureArea, .repeatArea, .captureActiveWindow, .captureWindow, .captureFullscreen, .captureDelayed, .pickColor, .showHistory,
+        .captureArea, .repeatArea, .captureActiveWindow, .captureWindow, .captureFullscreen, .captureDelayed, .pickColor, .showHistory, .recognizeText,
     ]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -37,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .captureDelayed: coordinator.captureDelayed()
         case .pickColor: coordinator.pickColor()
         case .showHistory: showGallery()
-        case .captureScrolling, .recognizeText: NSSound.beep()
+        case .recognizeText: coordinator.recognizeText()
+        case .captureScrolling: NSSound.beep()
         }
     }
 
@@ -88,6 +89,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             menu.addItem(.separator())
         }
+        if !coordinator.pins.isEmpty {
+            if coordinator.pins.contains(where: \.clickThrough) {
+                menu.addItem(withTitle: "Volver a poder hacer clic en las imágenes fijadas", action: #selector(restorePinClicks), keyEquivalent: "").target = self
+            }
+            menu.addItem(withTitle: "Cerrar las imágenes fijadas (\(coordinator.pins.count))", action: #selector(closeAllPins), keyEquivalent: "").target = self
+            menu.addItem(.separator())
+        }
         if !ScreenCapturer.hasPermission {
             menu.addItem(withTitle: "Conceder permiso de grabación de pantalla…", action: #selector(openScreenRecordingSettings), keyEquivalent: "").target = self
             menu.addItem(.separator())
@@ -105,6 +113,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func captureArea() { coordinator.captureArea() }
+    @objc private func closeAllPins() { coordinator.closeAllPins() }
+    @objc private func restorePinClicks() { coordinator.restorePinClicks() }
 
     @objc private func openRecent(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? UUID else { return }

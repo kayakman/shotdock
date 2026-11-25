@@ -8,13 +8,22 @@ import ShotDockCore
 final class CaptureCoordinator {
     private(set) var selection: AreaSelectionController?
     private(set) var editors: [EditorWindowController] = []
+    private(set) var pins: [PinWindowController] = []
     private var isCapturing = false
+    /// What the next selection is for.
+    private var purpose: Purpose = .capture
+    enum Purpose { case capture, recognize }
     private var settings: AppSettings { .shared }
 
     // MARK: Capture modes
 
     func captureArea() {
         run { try await self.select(mode: .area) }
+    }
+
+    /// Select an area, read its text (or QR code) and copy it.
+    func recognizeText() {
+        run { try await self.select(mode: .area, purpose: .recognize) }
     }
 
     func captureWindow() {
@@ -70,14 +79,16 @@ final class CaptureCoordinator {
         }
     }
 
-    private func select(mode: AreaSelectionController.Mode) async throws {
+    private func select(mode: AreaSelectionController.Mode, purpose: Purpose = .capture) async throws {
+        self.purpose = purpose
         let snapshots = try await ScreenCapturer.snapshotAllDisplays()
         let windows = (try? await ScreenCapturer.pickableWindows()) ?? []
         beginSelection(over: snapshots, windows: windows, mode: mode)
     }
 
     func beginSelection(over snapshots: [DisplaySnapshot], windows: [ScreenCapturer.WindowInfo] = [],
-                        mode: AreaSelectionController.Mode = .area) {
+                        mode: AreaSelectionController.Mode = .area, purpose: Purpose? = nil) {
+        if let purpose { self.purpose = purpose }
         isCapturing = true
         let controller = AreaSelectionController(snapshots: snapshots, windows: windows, mode: mode) { [weak self] outcome in
             guard let self else { return }
@@ -85,6 +96,7 @@ final class CaptureCoordinator {
             switch outcome {
             case let .area(result):
                 isCapturing = false
+                if purpose == .recognize { return recognize(result.image) }
                 settings.lastArea = result.screenRect
                 finish(CaptureDocument(image: result.image, scale: result.scale))
             case let .window(info):
@@ -139,6 +151,54 @@ final class CaptureCoordinator {
             HUD.show(done.joined(separator: " · "), symbol: "checkmark.circle.fill")
         }
     }
+
+    /// OCR for the global shortcut: copies a QR payload if there is one, else the text.
+    func recognize(_ image: CGImage) {
+        purpose = .capture
+        // The first OCR after installing can take a while (Vision loads its models).
+        HUD.show("Reconociendo texto…", symbol: "text.viewfinder", for: .seconds(60))
+        Task {
+            do {
+                let result = try await TextRecognition.recognize(image)
+                HUD.hide()
+                onRecognized?(image, result)
+                let pasteboard = NSPasteboard.general
+                if let code = result.codes.first {
+                    pasteboard.clearContents()
+                    pasteboard.setString(code, forType: .string)
+                    HUD.show("Código QR copiado: \(code.prefix(60))", symbol: "qrcode", for: .seconds(2.5))
+                } else if !result.lines.isEmpty {
+                    let text = result.text(joinLines: settings.ocrJoinLines)
+                    pasteboard.clearContents()
+                    pasteboard.setString(text, forType: .string)
+                    HUD.show("Texto copiado (\(text.count) caracteres)", symbol: "text.viewfinder")
+                } else {
+                    HUD.show("No se ha encontrado texto", symbol: "exclamationmark.triangle")
+                }
+            } catch {
+                HUD.hide()
+                showError(error)
+            }
+        }
+    }
+
+    /// Selftest hook: sees every global OCR result.
+    var onRecognized: ((CGImage, RecognitionResult) -> Void)?
+
+    // MARK: Pins
+
+    @discardableResult
+    func pin(_ image: CGImage, scale: CGFloat, near point: CGPoint? = nil) -> PinWindowController {
+        let pin = PinWindowController(image: image, scale: scale, near: point)
+        pin.onClose = { [weak self] closed in self?.pins.removeAll { $0 === closed } }
+        pins.append(pin)
+        pin.show()
+        return pin
+    }
+
+    func closeAllPins() { pins.forEach { $0.close() } }
+
+    func restorePinClicks() { pins.forEach { $0.clickThrough = false } }
 
     func copyColor(_ color: RGBAColor) {
         let text = settings.colorFormat.string(for: color)

@@ -75,6 +75,16 @@ struct GalleryActions {
         }
     }
 
+    func pin(_ id: UUID) {
+        guard let document = store.document(id), let image = document.flattened() else { return }
+        coordinator.pin(image, scale: document.scale)
+    }
+
+    func recognize(_ id: UUID) {
+        guard let document = store.document(id), let image = document.flattened(), let window = window() else { return }
+        RecognitionPanel.present(for: image, on: window)
+    }
+
     func revealSaved(_ item: CaptureItem) {
         guard let path = item.savedPath else { return }
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
@@ -181,6 +191,8 @@ struct GalleryView: View {
         Button("Abrir en el editor") { actions.open([item.id]) }
         Button("Copiar") { actions.copy(item.id) }
         Button("Guardar en la carpeta") { actions.save(item.id) }
+        Button("Fijar encima de todo") { actions.pin(item.id) }
+        Button("Reconocer texto") { actions.recognize(item.id) }
         if item.savedPath != nil {
             Button("Mostrar en el Finder") { actions.revealSaved(item) }
         }

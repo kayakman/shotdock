@@ -40,7 +40,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
     private func buildContent() {
         guard let window else { return }
-        let toolbar = NSHostingView(rootView: EditorToolbar(model: model, onSave: { [weak self] in self?.saveDocument(nil) }))
+        let toolbar = NSHostingView(rootView: EditorToolbar(
+            model: model,
+            onSave: { [weak self] in self?.saveDocument(nil) },
+            onPin: { [weak self] in self?.pinImage(nil) },
+            onRecognize: { [weak self] in self?.recognizeText(nil) }))
         toolbar.translatesAutoresizingMaskIntoConstraints = false
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -134,6 +138,21 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
                 NSAlert(error: error).beginSheetModal(for: window)
             }
         }
+    }
+
+    /// Pins the edited image where the editor is and closes the editor.
+    @objc func pinImage(_ sender: Any?) {
+        canvas.commitTextEditing()
+        guard let image = model.flattened(), let window else { return }
+        let topLeft = CGPoint(x: window.frame.minX + 20, y: window.frame.maxY - 60)
+        coordinator?.pin(image, scale: model.document.scale, near: topLeft)
+        window.performClose(nil)
+    }
+
+    @objc func recognizeText(_ sender: Any?) {
+        canvas.commitTextEditing()
+        guard let image = model.flattened(), let window else { return }
+        RecognitionPanel.present(for: image, on: window)
     }
 
     @objc func zoomToActualSize(_ sender: Any?) { scrollView.animator().magnification = 1 }

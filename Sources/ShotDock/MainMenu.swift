@@ -22,6 +22,9 @@ enum MainMenu {
         file.addItem(.separator())
         file.addItem(item("Guardar", #selector(EditorWindowController.saveDocument(_:)), "s"))
         file.addItem(item("Guardar como…", #selector(EditorWindowController.saveDocumentAs(_:)), "s", [.command, .shift]))
+        file.addItem(.separator())
+        file.addItem(item("Fijar encima de todo", #selector(EditorWindowController.pinImage(_:)), "p"))
+        file.addItem(item("Reconocer texto", #selector(EditorWindowController.recognizeText(_:)), "t", [.command, .shift]))
         file.addItem(item("Cerrar", #selector(NSWindow.performClose(_:)), "w"))
         add(file, to: main)
 
