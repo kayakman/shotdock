@@ -45,7 +45,10 @@ enum RemoteInspection {
             }
             return .object(result)
         },
-        "ocr": { params, _ in try await ocr(params) },
+        "ocr": { params, _ in
+            // Reading the screen is a capture: one at a time.
+            params["target"] == nil ? try await RemoteCapture.exclusive { try await ocr(params) } : try await ocr(params)
+        },
     ]
 
     /// The image to read and the point in its pixels: the edited capture, or
@@ -54,8 +57,7 @@ enum RemoteInspection {
     static func pixels(_ params: [String: JSONValue]) async throws -> (CGImage, CGPoint, CGFloat, CGPoint) {
         guard let at = params["at"]?.point else { throw RPCError.invalidParams("at is required") }
         if params["target"] != nil {
-            let id = try RemoteDocuments.resolve(params["target"])
-            let document = try RemoteDocuments.document(id)
+            let (document, _) = try RemoteDocuments.read(params["target"])
             guard let image = document.flattened() else { throw RPCError.internalError("Cannot draw the capture") }
             return (image, at, document.exportScale, .zero)
         }
@@ -72,8 +74,8 @@ enum RemoteInspection {
         var image: CGImage
         var itemID: UUID?
         if params["target"] != nil {
-            let id = try RemoteDocuments.resolve(params["target"])
-            guard let flat = try RemoteDocuments.document(id).flattened() else { throw RPCError.internalError("Cannot draw the capture") }
+            let (document, id) = try RemoteDocuments.read(params["target"])
+            guard let flat = document.flattened() else { throw RPCError.internalError("Cannot draw the capture") }
             image = flat
             itemID = id
         } else if params["interactive"]?.boolValue == true {

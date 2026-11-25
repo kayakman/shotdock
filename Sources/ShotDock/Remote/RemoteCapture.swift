@@ -8,17 +8,19 @@ import ShotDockCore
 @MainActor
 enum RemoteCapture {
     static let handlers: [String: RemoteHandler] = [
-        "capture.area": { params, _ in try await area(params) },
-        "capture.window": { params, _ in try await window(params) },
-        "capture.screen": { params, _ in try await screen(params) },
+        "capture.area": { params, _ in try await exclusive { try await area(params) } },
+        "capture.window": { params, _ in try await exclusive { try await window(params) } },
+        "capture.screen": { params, _ in try await exclusive { try await screen(params) } },
         "capture.repeat": { params, _ in
-            try await prepare(params)
-            guard let area = AppSettings.shared.lastArea, let document = try await coordinator.repeatAreaDocument() else {
-                throw RPCError.notFound("There is no previous area: capture an area first")
+            try await exclusive {
+                try await prepare(params)
+                guard let area = AppSettings.shared.lastArea, let document = try await coordinator.repeatAreaDocument() else {
+                    throw RPCError.notFound("There is no previous area: capture an area first")
+                }
+                return try await deliver(Captured(document: document, rect: topLeft(area)), params)
             }
-            return try await deliver(Captured(document: document, rect: topLeft(area)), params)
         },
-        "capture.scroll": { params, _ in try await scroll(params) },
+        "capture.scroll": { params, _ in try await exclusive { try await scroll(params) } },
     ]
 
     struct Captured {
@@ -38,10 +40,18 @@ enum RemoteCapture {
 
     static func topLeft(_ rect: CGRect) -> CGRect { ScreenGeometry.flipped(rect, primaryHeight: RemoteScreens.primaryHeight) }
 
-    /// Permission, busy check and the delay.
+    /// One capture at a time: refuses while another one (an agent's, or the
+    /// user's from a shortcut) is in progress, and holds the coordinator meanwhile.
+    static func exclusive(_ body: () async throws -> JSONValue) async throws -> JSONValue {
+        guard !coordinator.isBusy else { throw busy }
+        coordinator.reserved = true
+        defer { coordinator.reserved = false }
+        return try await body()
+    }
+
+    /// Permission and the delay.
     static func prepare(_ params: [String: JSONValue]) async throws {
         guard ScreenCapturer.hasPermission else { throw ScreenCaptureError.permissionDenied }
-        guard !coordinator.isBusy else { throw busy }
         guard let delay = params["delay"]?.doubleValue, delay > 0 else { return }
         if params["countdown"]?.boolValue == true {
             guard await HUD.countdown(seconds: Int(delay.rounded(.up))) else { throw cancelled }

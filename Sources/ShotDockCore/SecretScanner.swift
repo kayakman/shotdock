@@ -43,7 +43,8 @@ public enum SecretScanner {
         Rule("token", #"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"#), // JWT
         Rule("token", #"\b(?:Bearer|Basic)\s+([A-Za-z0-9_\-\.=+/]{16,})"#, group: 1),
         Rule("private_key", #"-----BEGIN [A-Z ]*PRIVATE KEY-----"#),
-        Rule("password", #"\b(?:password|passwd|pwd|contraseña|clave|secret|token|api[_\-]?key|access[_\-]?key)\b\s*[:=]\s*["']?([^\s"']{4,})"#,
+        // Also DB_PASSWORD=…, AWS_SECRET_ACCESS_KEY=… and "password": "…" (no \b: "_" is a word character).
+        Rule("password", #"(?:password|passwd|pwd|contraseña|clave|secret|token|api[_\-]?key|access[_\-]?key)["']?\s*[:=]\s*["']?([^\s"',]{4,})"#,
              group: 1, options: [.caseInsensitive]),
         Rule("email", #"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b"#),
         Rule("card", #"\b(?:\d[ \-]?){12,18}\d\b"#, check: { luhn($0) }),

@@ -433,6 +433,9 @@ extension SelfTest {
         try ImageEncoding.write(Self.testPattern(width: 3000, height: 1500), to: big, scale: 2)
         run = try await shotdock(["annotate", "rect", "build/selftest-edit-big.png", "--rect", "100,100,200,100", "--space", "preview", "--json"])
         let newID = run.json?["id"]?.stringValue.flatMap(UUID.init(uuidString:))
+        let again = try await shotdock(["annotate", "oval", big.path, "--rect", "10,10,50,50", "--json"])
+        check(again.json?["id"]?.stringValue == newID?.uuidString && again.json?["annotation_count"] == 2,
+              "editing the same unchanged file again continues the same capture")
         let box = newID.flatMap { LibraryStore.shared.document($0)?.annotations.first?.box } ?? .zero
         let scale = ImagePreview.scale(for: CGSize(width: 3000, height: 1500))
         check(run.status == 0 && newID != id && abs(box.width - 200 / scale) < 1, "a file becomes a capture; preview positions are scaled (\(box))")
@@ -462,6 +465,8 @@ extension SelfTest {
         try ImageEncoding.write(context.makeImage()!, to: file, scale: 2)
 
         var run = try await shotdock(["measure", file.path, "--at", "150,100", "--json"])
+        check(LibraryStore.shared.items.isEmpty, "reading a file does not add it to the history")
+        _ = try await shotdock(["history", "import", file.path])
         check(run.status == 0 && run.json?["width"] == 240 && run.json?["height"] == 120 && run.json?["width_pt"] == 120,
               "measure finds the box (\(run.json?["width"] ?? nil)×\(run.json?["height"] ?? nil))")
         check(run.json?["rect"]?.rect == CGRect(x: 100, y: 80, width: 240, height: 120), "and where it is")

@@ -198,7 +198,9 @@ public final class ControlServer: @unchecked Sendable {
         }
 
         private func send(_ response: RPCResponse) {
-            guard !closed, let data = try? LineFraming.frame(response) else { return }
+            // An answer that cannot be encoded (NaN…) still gets a reply, so the client does not wait in vain.
+            let fallback = RPCResponse(id: response.id, error: .internalError("The answer could not be encoded"))
+            guard !closed, let data = (try? LineFraming.frame(response)) ?? (try? LineFraming.frame(fallback)) else { return }
             data.withUnsafeBytes { raw in
                 var offset = 0
                 while offset < raw.count {

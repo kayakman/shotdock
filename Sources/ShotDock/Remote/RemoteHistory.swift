@@ -106,7 +106,7 @@ enum RemoteHistory {
             "created_at": .string(ISO8601DateFormatter().string(from: item.createdAt)),
             "width": .number(Double(item.pixelWidth)),
             "height": .number(Double(item.pixelHeight)),
-            "scale": .number(item.scale),
+            "scale": .number(item.exportScale ?? item.scale),
             "annotations": .number(Double(item.annotationCount)),
             "saved_path": item.savedPath.map(JSONValue.string) ?? .null,
             "url": item.uploadedURL.map(JSONValue.string) ?? .null,

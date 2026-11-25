@@ -114,7 +114,8 @@ public extension KeyNames {
         if let code = plain.first(where: { $0.value == lower })?.key { return code }
         if let code = fixed.first(where: { $0.value.lowercased() == lower })?.key { return code }
         if let code = ansi.first(where: { $0.value.lowercased() == lower })?.key { return code }
-        if lower.hasPrefix("#"), let code = Int(lower.dropFirst()) { return code }
+        // Virtual key codes go up to 0x7F; anything else would not be a key.
+        if lower.hasPrefix("#"), let code = Int(lower.dropFirst()), (0...0x7F).contains(code) { return code }
         return nil
     }
 }

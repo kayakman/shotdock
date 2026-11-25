@@ -21,8 +21,9 @@ final class ControlService {
     var handlers: [String: RemoteHandler] = RemoteHandlers.all
     /// Asks the user whether a new agent may drive the app. Selftests answer it themselves.
     var approve: (AgentClient) async -> Bool = AgentApproval.ask
-    private var clients: [pid_t: AgentClient] = [:]
-    private var deniedPIDs: Set<pid_t> = []
+    /// Keyed by pid and start time, so a reused pid is a new caller.
+    private var clients: [String: AgentClient] = [:]
+    private var denied: Set<String> = []
     private var pendingApprovals: [String: Task<Bool, Never>] = [:]
     private var lastDisabledHint: Date?
 
@@ -67,10 +68,14 @@ final class ControlService {
         }
     }
 
+    static func processKey(_ pid: pid_t) -> String { "\(pid)@\(ProcessLineage.startTime(pid) ?? 0)" }
+
     func client(for pid: pid_t) -> AgentClient {
-        if let known = clients[pid] { return known }
+        let key = Self.processKey(pid)
+        if let known = clients[key] { return known }
         let client = AgentClient.identify(chain: ProcessLineage.chain(from: pid))
-        clients[pid] = client
+        if clients.count > 500 { clients = [:] }
+        clients[key] = client
         return client
     }
 
@@ -98,14 +103,15 @@ final class ControlService {
             return
         }
         let denied = RPCError(code: RPCError.notAuthorizedCode, message: "The user did not allow \(client.title) to control ShotDock.")
-        if deniedPIDs.contains(pid) { throw denied }
+        let process = Self.processKey(pid)
+        if self.denied.contains(process) { throw denied }
         // Several calls at once share one question.
         let question = pendingApprovals[client.id] ?? Task { await approve(client) }
         pendingApprovals[client.id] = question
         let allowed = await question.value
         pendingApprovals[client.id] = nil
         guard allowed else {
-            deniedPIDs.insert(pid)
+            self.denied.insert(process)
             throw denied
         }
         if !isApproved(client) {

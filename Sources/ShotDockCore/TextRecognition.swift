@@ -100,9 +100,20 @@ public enum TextRecognition {
         func pixels(_ box: CGRect) -> CGRect {
             CGRect(x: box.minX * w, y: (1 - box.maxY) * h, width: box.width * w, height: box.height * h).integral
         }
+        // The lines of a private key, from its BEGIN line to its END line, are all secret.
+        var inPrivateKey = false
         for observation in observations {
             guard let candidate = observation.topCandidates(1).first else { continue }
             result.textLines.append(RecognizedLine(text: candidate.string, box: pixels(observation.boundingBox), confidence: candidate.confidence))
+            if let secrets, secrets.isEmpty || secrets.contains("private_key") {
+                let line = candidate.string
+                if line.contains("PRIVATE KEY-----") && line.contains("BEGIN") { inPrivateKey = true }
+                if inPrivateKey {
+                    result.secrets.append(RecognizedSecret(kind: "private_key", masked: SecretScanner.mask(line), box: pixels(observation.boundingBox)))
+                    if line.contains("-----END") { inPrivateKey = false }
+                    continue
+                }
+            }
             if let secrets {
                 for finding in SecretScanner.scan(candidate.string, kinds: secrets.isEmpty ? nil : secrets) {
                     let box = (try? candidate.boundingBox(for: finding.range))?.boundingBox ?? observation.boundingBox

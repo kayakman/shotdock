@@ -66,6 +66,7 @@ enum RemoteEditing {
                 throw RPCError.invalidParams("Unknown kind \(unknown); use \(SecretScanner.kinds.joined(separator: ", "))")
             }
             let (boxes, findings) = try await Redaction.annotations(for: document, kinds: kinds)
+            try RemoteDocuments.unchanged(id, since: document)
             let report = findingsJSON(findings)
             if params["dry_run"]?.boolValue == true || boxes.isEmpty {
                 return try RemoteDocuments.result(id, document, extra: ["found": report, "covered": .number(0)])
@@ -98,6 +99,7 @@ enum RemoteEditing {
             if case let .step(_, number) = annotation.shape { nextStep = max(nextStep, number + 1) }
             added.append(annotation)
         }
+        if !located.isEmpty { try RemoteDocuments.unchanged(id, since: document) }
         let edited = try RemoteDocuments.edit(id, added.count == 1 ? "Anotar" : "Anotar (\(added.count))") { $0.annotations += added }
         return try RemoteDocuments.result(id, edited, extra: ["added": .array(added.map { .string($0.id.uuidString) })])
     }
@@ -196,19 +198,49 @@ extension RemoteDocuments {
     /// (absolute, as the CLI and MCP server pass it) added to the history.
     static func resolve(_ target: JSONValue?) throws -> UUID {
         let text = target?.stringValue ?? ""
-        if text.hasPrefix("/") { return try importFile(text, scale: nil) }
+        if text.hasPrefix("/") { return try importFile(text, scale: nil, reuse: true) }
         return try LibraryStore.shared.resolve(text)
     }
 
-    static func importFile(_ path: String, scale: CGFloat?) throws -> UUID {
+    /// For commands that only read (measure, color, ocr): a file is read as
+    /// it is, without adding it to the history.
+    static func read(_ target: JSONValue?) throws -> (CaptureDocument, UUID?) {
+        let text = target?.stringValue ?? ""
+        if text.hasPrefix("/") { return (try load(text, scale: nil), nil) }
+        let id = try LibraryStore.shared.resolve(text)
+        return (try document(id), id)
+    }
+
+    /// Files imported by edit commands in this session, so editing the same
+    /// unchanged file again continues the same capture.
+    private static var imported: [String: (modified: Date, id: UUID)] = [:]
+
+    static func importFile(_ path: String, scale: CGFloat?, reuse: Bool = false) throws -> UUID {
+        let modified = (try? FileManager.default.attributesOfItem(atPath: path)[.modificationDate] as? Date) ?? .distantPast
+        if reuse, let known = imported[path], known.modified == modified, LibraryStore.shared.item(known.id) != nil { return known.id }
+        guard let id = LibraryStore.shared.add(try load(path, scale: scale)) else {
+            throw RPCError.notFound("The history is off (Preferencias › Historial)")
+        }
+        imported[path] = (modified, id)
+        return id
+    }
+
+    static func load(_ path: String, scale: CGFloat?) throws -> CaptureDocument {
         guard let data = FileManager.default.contents(atPath: path) else { throw RPCError.notFound("Cannot read \(path)") }
         guard let image = try? ImageEncoding.image(from: data) else { throw RPCError.invalidParams("\(path) is not an image") }
         let scale = scale ?? ImageEncoding.scale(of: data)
-        guard scale > 0 else { throw RPCError.invalidParams("scale must be positive") }
-        guard let id = LibraryStore.shared.add(CaptureDocument(image: image, scale: scale)) else {
-            throw RPCError.notFound("The history is off (Preferencias › Historial)")
+        guard scale.isFinite, (0.1...16).contains(scale) else { throw RPCError.invalidParams("scale must be between 0.1 and 16") }
+        return CaptureDocument(image: image, scale: scale)
+    }
+
+    /// Positions found by OCR belong to the document as it was; refuses if its
+    /// crop, backdrop or size changed meanwhile (a box in the wrong place
+    /// could leave a secret uncovered).
+    static func unchanged(_ id: UUID, since before: CaptureDocument) throws {
+        let now = try document(id)
+        guard DocumentView(now) == DocumentView(before), now.outputSize == before.outputSize else {
+            throw RPCError(code: RPCError.busyCode, message: "The capture changed while its text was being read; try again")
         }
-        return id
     }
 
     /// Applies a change: through the open editor (undoable there), or to the library.

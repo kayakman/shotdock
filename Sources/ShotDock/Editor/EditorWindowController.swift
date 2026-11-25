@@ -199,6 +199,10 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             do {
                 let (boxes, _) = try await Redaction.annotations(for: document)
                 guard !boxes.isEmpty else { return model.flash("No se han encontrado secretos") }
+                // The boxes are where the secrets were; not if the crop or size changed meanwhile.
+                guard DocumentView(model.document) == DocumentView(document), model.document.outputSize == document.outputSize else {
+                    return model.flash("La captura ha cambiado: vuelve a ocultar los secretos")
+                }
                 model.applyExternal("Ocultar secretos") { $0.annotations += boxes }
                 model.flash(boxes.count == 1 ? "1 secreto oculto" : "\(boxes.count) secretos ocultos")
             } catch {

@@ -17,6 +17,8 @@ public struct CaptureItem: Codable, Identifiable, Equatable, Sendable {
     public var uploadedURL: String?
     /// Text found by OCR, kept so the history can be searched by it.
     public var recognizedText: String?
+    /// Pixels per point of the exported image (differs from `scale` once resized).
+    public var exportScale: CGFloat?
 }
 
 /// The history of captures ("the dock"): every capture is kept with its
@@ -156,6 +158,7 @@ public final class CaptureLibrary {
         item.pixelWidth = Int(size.width)
         item.pixelHeight = Int(size.height)
         item.annotationCount = document.annotations.count
+        item.exportScale = document.resize == nil ? nil : document.exportScale
         if let flat = document.flattened(), let thumbnail = Self.thumbnail(of: flat) {
             try ImageEncoding.write(thumbnail, to: thumbnailURL(item.id))
         }

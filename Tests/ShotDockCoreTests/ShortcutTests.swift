@@ -53,6 +53,7 @@ private let shiftCmd = KeyCombo.command | KeyCombo.shift
     #expect(KeyCombo(parsing: "cmd+space") == KeyCombo(keyCode: 0x31, modifiers: KeyCombo.command))
     #expect(KeyCombo(parsing: "cmd+-") == KeyCombo(keyCode: 0x1B, modifiers: KeyCombo.command))
     #expect(KeyCombo(parsing: "hyper+2") == nil && KeyCombo(parsing: "cmd+ñ") == nil)
+    #expect(KeyCombo(parsing: "cmd+#70000") == nil && KeyCombo(parsing: "cmd+#5") == KeyCombo(keyCode: 5, modifiers: KeyCombo.command))
     #expect(area.plainDescription == "shift+cmd+2")
     #expect(KeyCombo(parsing: area.plainDescription) == area)
 }

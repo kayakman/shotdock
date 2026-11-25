@@ -79,7 +79,7 @@ final class CaptureCoordinator {
     }
 
     func captureDelayed() {
-        guard !isCapturing, ensurePermission() else { return }
+        guard !isBusy, ensurePermission() else { return }
         isCapturing = true
         Task {
             let go = await HUD.countdown(seconds: settings.captureDelay)
@@ -91,7 +91,7 @@ final class CaptureCoordinator {
     // MARK: Steps
 
     private func run(_ body: @escaping () async throws -> Void) {
-        guard !isCapturing, ensurePermission() else { return }
+        guard !isBusy, ensurePermission() else { return }
         isCapturing = true
         Task {
             do { try await body() } catch { showError(error) }
@@ -151,7 +151,11 @@ final class CaptureCoordinator {
     // and decide afterwards what to do with the capture.
 
     /// Busy selecting, scrolling or counting down.
-    var isBusy: Bool { isCapturing || selection != nil || scrollSession != nil }
+    var isBusy: Bool { isCapturing || reserved || selection != nil || scrollSession != nil }
+
+    /// Held by an agent's capture from its busy check to the end (delays
+    /// included), so a shortcut or another agent cannot start one meanwhile.
+    var reserved = false
 
     func displayDocument(containing point: CGPoint) async throws -> CaptureDocument {
         let snapshot = try await ScreenCapturer.snapshotDisplay(containing: point)
@@ -185,11 +189,13 @@ final class CaptureCoordinator {
     /// Shows the selection overlay and returns what the user picked, or nil
     /// if they cancelled. The capture is not finished: the caller decides.
     func pick(mode: AreaSelectionController.Mode) async throws -> AreaSelectionController.Outcome? {
+        guard selection == nil, scrollSession == nil else { throw RemoteCapture.busy }
         let snapshots = try await ScreenCapturer.snapshotAllDisplays()
         let windows = mode == .window ? (try? await ScreenCapturer.pickableWindows()) ?? [] : []
         isCapturing = true
         defer { isCapturing = false }
         return await withCheckedContinuation { continuation in
+            guard selection == nil else { return continuation.resume(returning: nil) }
             let controller = AreaSelectionController(snapshots: snapshots, windows: windows, mode: mode) { [weak self] outcome in
                 self?.selection = nil
                 // Everything here stays on the main actor.

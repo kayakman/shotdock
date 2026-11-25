@@ -154,7 +154,8 @@ public enum CommandCatalog {
 
     // MARK: Editing
 
-    static let editTarget = ParamSpec("target", .reference, "Capture: history id (or its start), last, last-1…, or an image file (added to the history)",
+    static let editTarget = ParamSpec("target", .reference,
+                                      "Capture: history id (or its start), last, last-1…, or an image file (added to the history once; the result's id names it)",
                                       required: true, positional: true)
     static let space = ParamSpec("space", .choice(["pixels", "preview"]),
                                  "Positions are pixels of the edited image, or of the MCP preview (pixels × preview_scale)", default: "pixels")

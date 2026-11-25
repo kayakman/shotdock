@@ -45,3 +45,27 @@ import Testing
     #expect(enlarged.r < 10, "the magnifier shows the box, not what is under it")
     #expect(document.annotations[0].isPixelEffect && document.annotations[0].box != nil)
 }
+
+@Test func findsSecretsInEnvFilesAndJSON() {
+    #expect(SecretScanner.scan("AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG").map(\.text) == ["wJalrXUtnFEMI/K7MDENG"])
+    #expect(SecretScanner.scan("DB_PASSWORD=hunter22").map(\.text) == ["hunter22"])
+    #expect(SecretScanner.scan("export GITHUB_TOKEN=abcdef123456").map(\.text) == ["abcdef123456"])
+    #expect(SecretScanner.scan(#"{"password": "hunter22", "user": "rick"}"#).map(\.text) == ["hunter22"])
+    #expect(SecretScanner.scan("tokens used: 5000 of 10000").isEmpty)
+}
+
+@Test func coversEveryLineOfAPrivateKey() async throws {
+    let lines = ["-----BEGIN OPENSSH PRIVATE KEY-----", "b3BlbnNzaC1rZXktdjEAAAAABG5vbmU", "QyNTUxOQAAACBzdGVrZXlzZWNyZXQ",
+                 "-----END OPENSSH PRIVATE KEY-----", "Hola"]
+    let w = 1400, h = 70 * lines.count + 40
+    let context = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    context.setFillColor(gray: 1, alpha: 1)
+    context.fill(CGRect(x: 0, y: 0, width: w, height: h))
+    context.flipVertically(height: CGFloat(h))
+    for (i, line) in lines.enumerated() {
+        TextLayout(string: line, fontSize: 36, color: CGColor(gray: 0, alpha: 1)).draw(at: CGPoint(x: 30, y: 20 + i * 70), in: context)
+    }
+    let result = try await TextRecognition.recognize(context.makeImage()!, secrets: [])
+    #expect(result.secrets.filter { $0.kind == "private_key" }.count == 4, "\(result.secrets.map(\.masked))")
+}
