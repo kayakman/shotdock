@@ -93,6 +93,10 @@ private struct GeneralPreferences: View {
             Section("Captura") {
                 Stepper("Retardo: \(settings.captureDelay) s", value: $settings.captureDelay, in: 1...30)
                 Toggle("Incluir la sombra al capturar ventanas", isOn: $settings.windowShadow)
+                Picker("Formato de color", selection: $settings.colorFormat) {
+                    Text("HEX  #FF5A1F").tag(ColorFormat.hex)
+                    Text("RGB  rgb(255, 90, 31)").tag(ColorFormat.rgb)
+                }
             }
         }
         .formStyle(.grouped)

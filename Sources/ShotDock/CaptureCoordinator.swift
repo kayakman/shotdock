@@ -44,6 +44,11 @@ final class CaptureCoordinator {
         }
     }
 
+    /// Freezes the screen and copies the colour of the clicked pixel.
+    func pickColor() {
+        run { try await self.select(mode: .color) }
+    }
+
     func captureDelayed() {
         guard !isCapturing, ensurePermission() else { return }
         isCapturing = true
@@ -87,6 +92,9 @@ final class CaptureCoordinator {
                     do { try await self.capture(info) } catch { self.showError(error) }
                     self.isCapturing = false
                 }
+            case let .color(color):
+                isCapturing = false
+                copyColor(color)
             case nil:
                 isCapturing = false
             }
@@ -128,6 +136,13 @@ final class CaptureCoordinator {
         } else if !done.isEmpty {
             HUD.show(done.joined(separator: " · "), symbol: "checkmark.circle.fill")
         }
+    }
+
+    func copyColor(_ color: RGBAColor) {
+        let text = settings.colorFormat.string(for: color)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        HUD.show("Copiado \(text)", symbol: "eyedropper")
     }
 
     @discardableResult

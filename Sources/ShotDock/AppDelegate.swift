@@ -10,7 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Actions that already work; the rest keep their shortcut for later phases.
     static let availableActions: Set<ShortcutAction> = [
-        .captureArea, .repeatArea, .captureActiveWindow, .captureWindow, .captureFullscreen, .captureDelayed,
+        .captureArea, .repeatArea, .captureActiveWindow, .captureWindow, .captureFullscreen, .captureDelayed, .pickColor,
     ]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -34,7 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .captureWindow: coordinator.captureWindow()
         case .captureFullscreen: coordinator.captureFullscreen()
         case .captureDelayed: coordinator.captureDelayed()
-        case .captureScrolling, .recognizeText, .pickColor, .showHistory: NSSound.beep()
+        case .pickColor: coordinator.pickColor()
+        case .captureScrolling, .recognizeText, .showHistory: NSSound.beep()
         }
     }
 

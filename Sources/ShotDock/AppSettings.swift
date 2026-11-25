@@ -20,6 +20,7 @@ final class AppSettings {
     var imageFormat: ImageFormat { didSet { defaults.set(imageFormat.rawValue, forKey: "imageFormat") } }
     var captureDelay: Int { didSet { defaults.set(captureDelay, forKey: "captureDelay") } }
     var windowShadow: Bool { didSet { defaults.set(windowShadow, forKey: "windowShadow") } }
+    var colorFormat: ColorFormat { didSet { defaults.set(colorFormat.rawValue, forKey: "colorFormat") } }
     /// Last selected area in AppKit global coordinates, for "repeat area".
     var lastArea: CGRect? {
         didSet { lastArea.map { defaults.set(NSStringFromRect($0), forKey: "lastArea") } ?? defaults.removeObject(forKey: "lastArea") }
@@ -37,6 +38,7 @@ final class AppSettings {
         imageFormat = defaults.string(forKey: "imageFormat").flatMap(ImageFormat.init(rawValue:)) ?? .png
         captureDelay = defaults.object(forKey: "captureDelay") as? Int ?? 3
         windowShadow = defaults.object(forKey: "windowShadow") as? Bool ?? true
+        colorFormat = defaults.string(forKey: "colorFormat").flatMap(ColorFormat.init(rawValue:)) ?? .hex
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
     }
 

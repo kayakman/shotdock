@@ -34,11 +34,12 @@ final class AreaSelectionController {
         let screenRect: CGRect
     }
 
-    enum Mode { case area, window }
+    enum Mode { case area, window, color }
 
     enum Outcome {
         case area(Result)
         case window(ScreenCapturer.WindowInfo)
+        case color(RGBAColor)
     }
 
     private var panels: [OverlayPanel] = []
@@ -52,7 +53,7 @@ final class AreaSelectionController {
          completion: @escaping (Outcome?) -> Void) {
         self.completion = completion
         self.windows = windows
-        self.mode = windows.isEmpty ? .area : mode
+        self.mode = mode == .window && windows.isEmpty ? .area : mode
         for snapshot in snapshots {
             let panel = OverlayPanel(screenFrame: snapshot.frame)
             let view = SelectionView(snapshot: snapshot, controller: self)
@@ -65,7 +66,7 @@ final class AreaSelectionController {
 
     /// Space switches between dragging an area and picking a window.
     func toggleMode() {
-        guard !windows.isEmpty else { return }
+        guard !windows.isEmpty, mode != .color else { return }
         mode = mode == .area ? .window : .area
         updateHover(at: NSEvent.mouseLocation)
     }
@@ -83,6 +84,13 @@ final class AreaSelectionController {
         self.completion = nil
         close()
         completion(.window(window))
+    }
+
+    func pickColor(_ color: RGBAColor) {
+        guard let completion else { return }
+        self.completion = nil
+        close()
+        completion(.color(color))
     }
 
     private func close() {
@@ -172,8 +180,16 @@ final class SelectionView: NSView {
             drawSizeLabel(for: selection, in: context)
         } else {
             context.fill(bounds)
-            if let pointer { drawCrosshair(at: pointer, in: context) }
+            if let pointer, controller?.mode == .area { drawCrosshair(at: pointer, in: context) }
         }
+        if controller?.mode != .window, let point = current ?? pointer { drawLoupe(at: point, in: context) }
+    }
+
+    private func drawLoupe(at point: CGPoint, in context: CGContext) {
+        let pixel = CGPoint(x: point.x * snapshot.scale, y: point.y * snapshot.scale)
+        let origin = Loupe.origin(near: point, in: bounds, unit: 1)
+        Loupe.draw(image: snapshot.image, pixel: pixel, at: origin, unit: 1,
+                   colorFormat: AppSettings.shared.colorFormat, in: context)
     }
 
     /// Converts a frame in AppKit global coordinates to this view (top-left origin).
@@ -239,6 +255,13 @@ final class SelectionView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         window?.makeKey()
+        if controller?.mode == .color {
+            let point = convert(event.locationInWindow, from: nil)
+            if let color = Measure.color(in: snapshot.image, at: CGPoint(x: point.x * snapshot.scale, y: point.y * snapshot.scale)) {
+                controller?.pickColor(color)
+            }
+            return
+        }
         if controller?.mode == .window {
             if let window { controller?.updateHover(at: window.convertPoint(toScreen: event.locationInWindow)) }
             controller?.pickHoveredWindow()
@@ -250,7 +273,7 @@ final class SelectionView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard anchor != nil else { return }
+        guard anchor != nil else { return mouseMoved(with: event) }
         current = convert(event.locationInWindow, from: nil)
         needsDisplay = true
     }

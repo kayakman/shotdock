@@ -20,6 +20,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         window.title = CaptureNaming.defaultName(for: document.createdAt)
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.fullScreenPrimary]
+        window.acceptsMouseMovedEvents = true
         super.init(window: window)
         window.delegate = self
         buildContent()
@@ -60,7 +61,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
         ])
         window.contentView = content
-        window.contentMinSize = NSSize(width: 940, height: 240)
+        window.contentMinSize = NSSize(width: 1040, height: 240)
     }
 
     /// Opens at 100 % when the capture fits the screen, otherwise zoomed out to fit.
@@ -74,7 +75,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
                                height: screen.height * 0.9 - toolbarHeight - margin * 2)
         let fit = min(1, available.width / imageSize.width, available.height / imageSize.height)
         scrollView.magnification = fit
-        let contentSize = NSSize(width: max(940, imageSize.width * fit + margin * 2),
+        let contentSize = NSSize(width: max(1040, imageSize.width * fit + margin * 2),
                                  height: max(240, imageSize.height * fit + toolbarHeight + margin * 2))
         window.setContentSize(contentSize)
         window.center()

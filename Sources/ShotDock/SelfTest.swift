@@ -37,6 +37,7 @@ final class SelfTest {
             case "branding": try await branding()
             case "modes": try await modes()
             case "prefs": try await prefs()
+            case "measure": try await measure()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -351,6 +352,65 @@ final class SelfTest {
         if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
         try await Task.sleep(for: .milliseconds(200))
         check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// Ruler, eyedropper and loupe, in the editor and on the frozen screen.
+    private func measure() async throws {
+        // Test pattern with an orange 300 × 120 px box at (400, 300).
+        let base = Self.testPattern(width: 1200, height: 800)
+        let context = CGContext(data: nil, width: 1200, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.draw(base, in: CGRect(x: 0, y: 0, width: 1200, height: 800))
+        context.flipVertically(height: 800)
+        context.setFillColor(red: 1, green: 90.0 / 255, blue: 31.0 / 255, alpha: 1)
+        context.fill(CGRect(x: 420, y: 320, width: 300, height: 120))
+        let image = context.makeImage()!
+
+        let editor = app.coordinator.openEditor(with: CaptureDocument(image: image, scale: 2))
+        try await Task.sleep(for: .milliseconds(300))
+        guard let window = editor.window else { return fail("no editor") }
+        let at = { (x: CGFloat, y: CGFloat) in editor.canvas.convert(CGPoint(x: x, y: y), to: nil) }
+
+        editor.model.tool = .ruler
+        send(.mouseMoved, at: at(500, 380), to: window)
+        editor.canvas.display()
+        try await snapshot(window, to: sibling("ruler"))
+        send(.leftMouseDown, at: at(500, 380), to: window)
+        send(.leftMouseUp, at: at(500, 380), to: window)
+        check(NSPasteboard.general.string(forType: .string) == "300 × 120", "ruler click copies the box size (\(NSPasteboard.general.string(forType: .string) ?? "-"))")
+        drag(from: at(100, 100), to: at(250, 180), in: window)
+        check(NSPasteboard.general.string(forType: .string) == "150 × 80", "ruler drag copies the dragged size")
+
+        editor.model.tool = .colorPicker
+        send(.mouseMoved, at: at(430, 330), to: window)
+        send(.leftMouseDown, at: at(430, 330), to: window)
+        send(.leftMouseUp, at: at(430, 330), to: window)
+        check(NSPasteboard.general.string(forType: .string) == "#FF5A1F", "eyedropper copies HEX (\(NSPasteboard.general.string(forType: .string) ?? "-"))")
+        AppSettings.shared.colorFormat = .rgb
+        send(.leftMouseDown, at: at(430, 330), to: window)
+        send(.leftMouseUp, at: at(430, 330), to: window)
+        check(NSPasteboard.general.string(forType: .string) == "rgb(255, 90, 31)", "eyedropper copies RGB when chosen")
+        AppSettings.shared.colorFormat = .hex
+        editor.close()
+
+        // Global eyedropper over a frozen (synthetic) screen.
+        let screen = NSScreen.main!
+        let scale = screen.backingScaleFactor
+        let frozen = CGContext(data: nil, width: Int(screen.frame.width * scale), height: Int(screen.frame.height * scale),
+                               bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        frozen.draw(image, in: CGRect(x: 0, y: CGFloat(frozen.height) - 800, width: 1200, height: 800))
+        let snapshot = DisplaySnapshot(displayID: screen.displayID, image: frozen.makeImage()!, frame: screen.frame, scale: scale)
+        app.coordinator.beginSelection(over: [snapshot], mode: .color)
+        try await Task.sleep(for: .milliseconds(300))
+        guard let view = app.coordinator.selection?.selectionViews.first, let overlay = view.window else { return fail("no overlay") }
+        let point = view.convert(CGPoint(x: 430 / scale, y: 330 / scale), to: nil)
+        send(.mouseMoved, at: point, to: overlay)
+        render(view, to: sibling("loupe"))
+        send(.leftMouseDown, at: point, to: overlay)
+        try await Task.sleep(for: .milliseconds(200))
+        check(app.coordinator.selection == nil, "picking a colour closes the overlay")
+        check(NSPasteboard.general.string(forType: .string) == "#FF5A1F", "global eyedropper copies the colour")
     }
 
     /// Preferences window, shortcut recorder and the Shottr import.

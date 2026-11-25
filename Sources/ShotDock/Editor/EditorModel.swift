@@ -3,7 +3,7 @@ import Observation
 import ShotDockCore
 
 enum EditorTool: String, CaseIterable, Identifiable {
-    case arrow, rectangle, ellipse, highlight, text, step, blur, pixelate, eraser, crop
+    case arrow, rectangle, ellipse, highlight, text, step, blur, pixelate, eraser, crop, ruler, colorPicker
 
     var id: String { rawValue }
 
@@ -19,6 +19,8 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .pixelate: "Pixelar"
         case .eraser: "Borrador inteligente"
         case .crop: "Recortar"
+        case .ruler: "Regla"
+        case .colorPicker: "Cuentagotas"
         }
     }
 
@@ -34,6 +36,8 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .pixelate: "checkerboard.rectangle"
         case .eraser: "eraser"
         case .crop: "crop"
+        case .ruler: "ruler"
+        case .colorPicker: "eyedropper"
         }
     }
 
@@ -50,11 +54,16 @@ enum EditorTool: String, CaseIterable, Identifiable {
         case .pixelate: "p"
         case .eraser: "e"
         case .crop: "c"
+        case .ruler: "m"
+        case .colorPicker: "i"
         }
     }
 
     /// Tools whose marks take the selected colour.
-    var usesColor: Bool { ![.blur, .pixelate, .eraser, .crop].contains(self) }
+    var usesColor: Bool { ![.blur, .pixelate, .eraser, .crop, .ruler, .colorPicker].contains(self) }
+
+    /// Tools that inspect the capture instead of drawing on it.
+    var isInspector: Bool { self == .ruler || self == .colorPicker }
 
     /// Each tool remembers its colour; the highlighter starts yellow.
     var defaultColor: RGBAColor { self == .highlight ? .yellow : .red }
@@ -197,6 +206,15 @@ final class EditorModel {
     func copyToClipboard() {
         guard let image = flattened(), Pasteboard.copy(image, scale: document.scale) else { return }
         flash("Copiado")
+    }
+
+    /// Copies the colour of a pixel in the format chosen in Preferences.
+    func copyColor(at point: CGPoint) {
+        guard let color = Measure.color(in: document.image, at: point) else { return }
+        let text = AppSettings.shared.colorFormat.string(for: color)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        flash("Copiado \(text)")
     }
 
     func flash(_ message: String) {

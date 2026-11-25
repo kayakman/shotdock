@@ -12,9 +12,12 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         case moving(start: CGPoint, original: Annotation)
         case resizing(handle: Int, original: Annotation)
         case cropping(start: CGPoint, rect: CGRect)
+        case measuring(start: CGPoint, end: CGPoint)
     }
 
     private var drag: Drag?
+    /// Pointer position while the ruler or the eyedropper is active.
+    private var hoverPoint: CGPoint?
     private var textField: NSTextField?
     private var editingText: Annotation?
 
@@ -22,6 +25,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         self.model = model
         super.init(frame: .zero)
         syncGeometry()
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                       owner: self, userInfo: nil))
     }
 
     @available(*, unavailable)
@@ -67,8 +72,16 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             context.setStrokeColor(NSColor.white.cgColor)
             context.setLineWidth(pixelsPerScreenPoint)
             context.stroke(rect)
+        case let .measuring(start, end):
+            drawMeasurement(from: start, to: end, in: context)
         case .moving, .resizing, nil:
-            break
+            if let hoverPoint, model.tool == .ruler { drawEdgeRuler(at: hoverPoint, in: context) }
+        }
+        if let hoverPoint, model.tool == .colorPicker || model.tool == .ruler {
+            let unit = pixelsPerScreenPoint
+            let viewport = visibleRect
+            Loupe.draw(image: document.image, pixel: hoverPoint, at: Loupe.origin(near: hoverPoint, in: viewport, unit: unit),
+                       unit: unit, colorFormat: AppSettings.shared.colorFormat, in: context)
         }
 
         if let selected = model.selected, editingText == nil {
@@ -90,6 +103,90 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         }
     }
 
+    // MARK: Measuring
+
+    private func drawEdgeRuler(at point: CGPoint, in context: CGContext) {
+        guard let m = Measure.edges(in: model.document.image, at: point) else { return }
+        let rect = m.rect(around: point)
+        let y = floor(point.y) + 0.5, x = floor(point.x) + 0.5
+        drawRulerLines([CGPoint(x: rect.minX, y: y), CGPoint(x: rect.maxX, y: y),
+                        CGPoint(x: x, y: rect.minY), CGPoint(x: x, y: rect.maxY)], in: context)
+        drawMeasureLabel(sizeText(width: m.width, height: m.height), above: CGPoint(x: x, y: rect.minY), in: context)
+    }
+
+    private func drawMeasurement(from start: CGPoint, to end: CGPoint, in context: CGContext) {
+        let rect = CGRect(corner: start, corner: end).pixelAligned
+        let unit = pixelsPerScreenPoint
+        context.setStrokeColor(NSColor.controlAccentColor.cgColor)
+        context.setLineWidth(unit)
+        context.setLineDash(phase: 0, lengths: [4 * unit, 3 * unit])
+        context.stroke(rect)
+        context.setLineDash(phase: 0, lengths: [])
+        drawMeasureLabel(sizeText(width: Int(rect.width), height: Int(rect.height)), above: CGPoint(x: rect.midX, y: rect.minY), in: context)
+    }
+
+    private func drawRulerLines(_ points: [CGPoint], in context: CGContext) {
+        let unit = pixelsPerScreenPoint
+        context.setLineWidth(3 * unit)
+        context.setStrokeColor(CGColor(gray: 1, alpha: 0.85))
+        context.strokeLineSegments(between: points)
+        context.setLineWidth(1.2 * unit)
+        context.setStrokeColor(NSColor.controlAccentColor.cgColor)
+        context.strokeLineSegments(between: points)
+        // End ticks.
+        let tick = 5 * unit
+        for (i, p) in points.enumerated() {
+            let horizontal = i < 2
+            let a = horizontal ? CGPoint(x: p.x, y: p.y - tick) : CGPoint(x: p.x - tick, y: p.y)
+            let b = horizontal ? CGPoint(x: p.x, y: p.y + tick) : CGPoint(x: p.x + tick, y: p.y)
+            context.strokeLineSegments(between: [a, b])
+        }
+    }
+
+    /// "120 × 32 px", plus points when the capture is Retina.
+    private func sizeText(width: Int, height: Int) -> String {
+        let scale = model.document.scale
+        var text = "\(width) × \(height) px"
+        if scale != 1 {
+            let w = CGFloat(width) / scale, h = CGFloat(height) / scale
+            text += String(format: "  (%g × %g pt)", (w * 10).rounded() / 10, (h * 10).rounded() / 10)
+        }
+        return text
+    }
+
+    /// Label centred above `point` (the loupe sits below and to the side).
+    private func drawMeasureLabel(_ text: String, above point: CGPoint, in context: CGContext) {
+        let unit = pixelsPerScreenPoint
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 12 * unit, weight: .semibold),
+            .foregroundColor: NSColor.white,
+        ]
+        let size = (text as NSString).size(withAttributes: attributes)
+        var box = CGRect(x: point.x - size.width / 2 - 6 * unit, y: point.y - size.height - 12 * unit,
+                         width: size.width + 12 * unit, height: size.height + 6 * unit)
+        let viewport = visibleRect
+        box.origin.x = min(max(box.minX, viewport.minX + 4 * unit), viewport.maxX - box.width - 4 * unit)
+        box.origin.y = max(box.minY, viewport.minY + 4 * unit)
+        context.setFillColor(CGColor(gray: 0.08, alpha: 0.85))
+        context.addPath(CGPath(roundedRect: box, cornerWidth: 5 * unit, cornerHeight: 5 * unit, transform: nil))
+        context.fillPath()
+        (text as NSString).draw(at: CGPoint(x: box.minX + 6 * unit, y: box.minY + 3 * unit), withAttributes: attributes)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        guard model.tool.isInspector else {
+            if hoverPoint != nil { hoverPoint = nil; needsDisplay = true }
+            return
+        }
+        hoverPoint = location(of: event)
+        needsDisplay = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        hoverPoint = nil
+        needsDisplay = true
+    }
+
     override func resetCursorRects() {
         addCursorRect(visibleRect, cursor: .crosshair)
     }
@@ -105,6 +202,14 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         window?.makeFirstResponder(self)
         let point = location(of: event)
 
+        if model.tool == .colorPicker {
+            model.copyColor(at: point)
+            return
+        }
+        if model.tool == .ruler {
+            drag = .measuring(start: point, end: point)
+            return
+        }
         if let selected = model.selected, let handle = handleIndex(of: selected, near: point) {
             drag = .resizing(handle: handle, original: selected)
             return
@@ -141,6 +246,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             model.add(Annotation(shape: .step(center: point, number: model.document.nextStepNumber), style: style))
         case .crop:
             drag = .cropping(start: point, rect: box)
+        case .ruler, .colorPicker:
+            break
         case .text:
             let origin = CGPoint(x: point.x, y: point.y - style.fontSize * 0.6)
             beginTextEditing(Annotation(shape: .text(origin: origin, string: ""), style: style))
@@ -166,6 +273,9 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             model.replaceWithoutUndo(moved)
         case let .resizing(handle, original):
             model.replaceWithoutUndo(original.movingHandle(handle, to: point))
+        case let .measuring(start, _):
+            drag = .measuring(start: start, end: point)
+            hoverPoint = point
         case let .cropping(start, _):
             drag = .cropping(start: start, rect: CGRect(corner: start, corner: point).intersection(bounds))
         case nil:
@@ -185,6 +295,18 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             commitLiveEdit(from: original, actionName: "Cambiar tamaño")
         case let .cropping(_, rect):
             model.crop(to: rect)
+        case let .measuring(start, end):
+            // A drag leaves its size on the clipboard; a click measures the edges.
+            let rect = CGRect(corner: start, corner: end).pixelAligned
+            if rect.width >= 2 || rect.height >= 2 {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString("\(Int(rect.width)) × \(Int(rect.height))", forType: .string)
+                model.flash("Copiado \(Int(rect.width)) × \(Int(rect.height)) px")
+            } else if let m = Measure.edges(in: model.document.image, at: start) {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString("\(m.width) × \(m.height)", forType: .string)
+                model.flash("Copiado \(m.width) × \(m.height) px")
+            }
         case nil:
             break
         }
