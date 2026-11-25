@@ -48,6 +48,7 @@ final class SelfTest {
             case "magnifier": try await magnifier()
             case "overlay-fidelity": try await overlayFidelity()
             case "cli": try await cli()
+            case "cli-capture": try await cliCapture()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -909,7 +910,7 @@ final class SelfTest {
         while !condition(), Date().timeIntervalSince(start) < seconds { try await Task.sleep(for: .milliseconds(100)) }
     }
 
-    private func send(_ type: NSEvent.EventType, at point: CGPoint, to window: NSWindow, clicks: Int = 1) {
+    func send(_ type: NSEvent.EventType, at point: CGPoint, to window: NSWindow, clicks: Int = 1) {
         guard let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                                              windowNumber: window.windowNumber, context: nil, eventNumber: 0,
                                              clickCount: clicks, pressure: 1) else { return }

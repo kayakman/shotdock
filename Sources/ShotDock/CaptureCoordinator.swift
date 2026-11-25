@@ -1,4 +1,5 @@
 import AppKit
+import ScreenCaptureKit
 import ShotDockCore
 
 /// Runs captures from start to finish: grab the pixels (freezing the screens
@@ -54,23 +55,21 @@ final class CaptureCoordinator {
     func captureActiveWindow() {
         run {
             guard let window = try await ScreenCapturer.activeWindow() else { return try await self.select(mode: .window) }
-            try await self.capture(window)
+            self.finish(try await self.windowDocument(window.window, shadow: self.settings.windowShadow))
         }
     }
 
     func captureFullscreen() {
         run {
-            let snapshot = try await ScreenCapturer.snapshotDisplay(containing: NSEvent.mouseLocation)
-            self.finish(CaptureDocument(image: snapshot.image, scale: snapshot.scale))
+            self.finish(try await self.displayDocument(containing: NSEvent.mouseLocation))
         }
     }
 
     func repeatArea() {
-        guard let area = settings.lastArea else { return captureArea() }
+        guard settings.lastArea != nil else { return captureArea() }
         run {
-            let snapshot = try await ScreenCapturer.snapshotDisplay(containing: CGPoint(x: area.midX, y: area.midY))
-            guard let image = Self.crop(snapshot, toScreenRect: area) else { return try await self.select(mode: .area) }
-            self.finish(CaptureDocument(image: image, scale: snapshot.scale))
+            guard let document = try await self.repeatAreaDocument() else { return try await self.select(mode: .area) }
+            self.finish(document)
         }
     }
 
@@ -143,8 +142,85 @@ final class CaptureCoordinator {
     }
 
     private func capture(_ info: ScreenCapturer.WindowInfo) async throws {
-        let (image, scale) = try await ScreenCapturer.capture(window: info.window, shadow: settings.windowShadow)
-        finish(CaptureDocument(image: image, scale: scale))
+        finish(try await windowDocument(info.window, shadow: settings.windowShadow))
+    }
+
+    // MARK: Captures without UI
+
+    // These only grab pixels: the menu, the shortcuts and agents share them,
+    // and decide afterwards what to do with the capture.
+
+    /// Busy selecting, scrolling or counting down.
+    var isBusy: Bool { isCapturing || selection != nil || scrollSession != nil }
+
+    func displayDocument(containing point: CGPoint) async throws -> CaptureDocument {
+        let snapshot = try await ScreenCapturer.snapshotDisplay(containing: point)
+        return CaptureDocument(image: snapshot.image, scale: snapshot.scale)
+    }
+
+    func displayDocument(_ displayID: CGDirectDisplayID) async throws -> CaptureDocument {
+        guard let snapshot = try await ScreenCapturer.snapshotAllDisplays(only: displayID).first else { throw ScreenCaptureError.noDisplays }
+        return CaptureDocument(image: snapshot.image, scale: snapshot.scale)
+    }
+
+    func windowDocument(_ window: SCWindow, shadow: Bool) async throws -> CaptureDocument {
+        let (image, scale) = try await ScreenCapturer.capture(window: window, shadow: shadow)
+        return CaptureDocument(image: image, scale: scale)
+    }
+
+    /// Part of the screen, `rect` in AppKit global coordinates, from one
+    /// snapshot of the display under its centre.
+    func areaDocument(_ rect: CGRect) async throws -> CaptureDocument? {
+        let snapshot = try await ScreenCapturer.snapshotDisplay(containing: CGPoint(x: rect.midX, y: rect.midY))
+        guard let image = Self.crop(snapshot, toScreenRect: rect) else { return nil }
+        return CaptureDocument(image: image, scale: snapshot.scale)
+    }
+
+    /// The last selected area again, or nil if there is none (or it is off screen).
+    func repeatAreaDocument() async throws -> CaptureDocument? {
+        guard let area = settings.lastArea else { return nil }
+        return try await areaDocument(area)
+    }
+
+    /// Shows the selection overlay and returns what the user picked, or nil
+    /// if they cancelled. The capture is not finished: the caller decides.
+    func pick(mode: AreaSelectionController.Mode) async throws -> AreaSelectionController.Outcome? {
+        let snapshots = try await ScreenCapturer.snapshotAllDisplays()
+        let windows = mode == .window ? (try? await ScreenCapturer.pickableWindows()) ?? [] : []
+        isCapturing = true
+        defer { isCapturing = false }
+        return await withCheckedContinuation { continuation in
+            let controller = AreaSelectionController(snapshots: snapshots, windows: windows, mode: mode) { [weak self] outcome in
+                self?.selection = nil
+                // Everything here stays on the main actor.
+                nonisolated(unsafe) let picked = outcome
+                continuation.resume(returning: picked)
+            }
+            selection = controller
+            controller.show()
+        }
+    }
+
+    /// Runs a scrolling capture over `area` (AppKit coordinates) and returns
+    /// the stitched image, or nil if cancelled. `auto` scrolls by itself
+    /// (needs Accessibility); otherwise the user scrolls and presses Return.
+    func scroll(area: CGRect, auto: Bool, maxHeight: Int) async throws -> CaptureDocument? {
+        let snapshot = try await ScreenCapturer.snapshotDisplay(containing: CGPoint(x: area.midX, y: area.midY))
+        guard let first = Self.crop(snapshot, toScreenRect: area) else { return nil }
+        let displayID = snapshot.displayID
+        isCapturing = true
+        defer { isCapturing = false }
+        let image: CGImage? = await withCheckedContinuation { continuation in
+            let session = ScrollCaptureSession(area: area, scale: snapshot.scale, firstFrame: first, maxHeight: maxHeight,
+                                               frameSource: { try await ScreenCapturer.capture(rect: area, displayID: displayID) }) { [weak self] image in
+                self?.scrollSession = nil
+                continuation.resume(returning: image)
+            }
+            scrollSession = session
+            session.start()
+            if auto { session.autoScroll() }
+        }
+        return image.map { CaptureDocument(image: $0, scale: snapshot.scale) }
     }
 
     static func crop(_ snapshot: DisplaySnapshot, toScreenRect rect: CGRect) -> CGImage? {

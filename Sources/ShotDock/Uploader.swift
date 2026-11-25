@@ -15,26 +15,33 @@ enum Uploader {
     }
 
     /// Uploads, copies the link and records it in the history. Returns the link.
+    /// Agents upload `quiet`ly: no HUD, and the link is copied only if they ask.
     @discardableResult
-    static func upload(_ image: CGImage, scale: CGFloat, date: Date, libraryItem: UUID?) async throws -> URL {
+    static func upload(_ image: CGImage, scale: CGFloat, date: Date, libraryItem: UUID?,
+                       copyLink: Bool = true, quiet: Bool = false) async throws -> URL {
         let settings = AppSettings.shared
         let s3 = try client()
         let format = settings.imageFormat
         let data = try ImageEncoding.data(from: image, format: format, scale: scale)
         let base = FilenameTemplate(settings.filenameTemplate).name(for: date)
         let key = s3.configuration.key(for: UploadNaming.objectName(base: base, format: format))
-        HUD.show("Subiendo…", symbol: "icloud.and.arrow.up", for: .seconds(120))
+        if !quiet { HUD.show("Subiendo…", symbol: "icloud.and.arrow.up", for: .seconds(120)) }
         do {
             try await s3.putObject(key: key, data: data, contentType: format == .png ? "image/png" : "image/jpeg")
         } catch {
-            HUD.hide()
+            if !quiet { HUD.hide() }
             throw error
         }
-        guard let link = s3.link(for: key) else { HUD.hide(); throw S3Error.notConfigured }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(link.absoluteString, forType: .string)
+        guard let link = s3.link(for: key) else {
+            if !quiet { HUD.hide() }
+            throw S3Error.notConfigured
+        }
+        if copyLink {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(link.absoluteString, forType: .string)
+        }
         if let libraryItem { LibraryStore.shared.markUploaded(libraryItem, link: link) }
-        HUD.show("Enlace copiado", symbol: "link", for: .seconds(2))
+        if !quiet { HUD.show(copyLink ? "Enlace copiado" : "Subido", symbol: "link", for: .seconds(2)) }
         return link
     }
 

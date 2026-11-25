@@ -7,7 +7,7 @@ import ShotDockCore
 @MainActor
 enum RemoteHandlers {
     static var all: [String: RemoteHandler] {
-        general.merging(screens) { a, _ in a }
+        [general, screens, RemoteCapture.handlers].reduce(into: [:]) { all, part in all.merge(part) { a, _ in a } }
     }
 
     // MARK: General
@@ -78,6 +78,8 @@ enum RemoteScreens {
             Display(index: offset + 1, screen: screen, frame: ScreenGeometry.flipped(screen.frame, primaryHeight: primaryHeight))
         }
     }
+
+    static func display(_ index: Int) -> Display? { displays().first { $0.index == index } }
 
     /// The display number containing a top-left-origin point.
     static func displayIndex(containing point: CGPoint) -> Int? {

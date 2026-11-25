@@ -79,6 +79,7 @@ final class AppSettings {
         try? FileManager.default.removeItem(at: library)
         LibraryStore.shared = LibraryStore(root: library)
         Keychain.service = "app.shotdock.ShotDock.s3.selftest"
+        RemoteFiles.folder = FileManager.default.temporaryDirectory.appendingPathComponent("ShotDock Selftest Agent")
     }
 
     private func save<T: Encodable>(_ value: T, _ key: String) {

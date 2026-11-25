@@ -31,6 +31,8 @@ public struct CLIParser: Sendable {
     public let commands: [CommandSpec]
     public var readStdin: @Sendable () -> Data = { FileHandle.standardInput.readDataToEndOfFile() }
     public var readFile: @Sendable (String) throws -> Data = { try Data(contentsOf: URL(fileURLWithPath: $0)) }
+    /// Relative paths are resolved from here: the app runs elsewhere.
+    public var workingDirectory = FileManager.default.currentDirectoryPath
 
     public init(commands: [CommandSpec] = CommandCatalog.all) {
         self.commands = commands
@@ -176,6 +178,9 @@ public struct CLIParser: Sendable {
         }
         switch param.kind {
         case .string, .color, .choice: return .string(text)
+        case .path:
+            let expanded = (text as NSString).expandingTildeInPath
+            return .string(expanded.hasPrefix("/") ? expanded : URL(fileURLWithPath: workingDirectory).appendingPathComponent(expanded).standardized.path)
         case .integer:
             guard let value = Int(text) else { throw bad() }
             return .number(Double(value))
@@ -222,6 +227,7 @@ public struct CLIParser: Sendable {
     private func metavar(_ param: ParamSpec) -> String {
         switch param.kind {
         case .string: "text"
+        case .path: "path"
         case .integer, .number: "n"
         case .boolean: "true|false"
         case .point: "x,y"

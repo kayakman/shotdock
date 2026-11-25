@@ -6,6 +6,8 @@ import Foundation
 public struct ParamSpec: Sendable {
     public enum Kind: Sendable {
         case string
+        /// A file path; the CLI makes it absolute from its working directory.
+        case path
         case integer
         case number
         case boolean
@@ -48,6 +50,7 @@ public struct ParamSpec: Sendable {
         let number: JSONValue = ["type": "number"]
         switch kind {
         case .string: schema = ["type": "string"]
+        case .path: schema = ["type": "string"]
         case .integer: schema = ["type": "integer"]
         case .number: schema = ["type": "number"]
         case .boolean: schema = ["type": "boolean"]
@@ -71,7 +74,7 @@ public struct ParamSpec: Sendable {
     func problem(with value: JSONValue) -> String? {
         let ok: Bool
         switch kind {
-        case .string: ok = value.stringValue != nil
+        case .string, .path: ok = value.stringValue != nil
         case .integer: ok = value.intValue != nil
         case .number: ok = value.doubleValue != nil
         case .boolean: ok = value.boolValue != nil
@@ -92,6 +95,7 @@ public struct ParamSpec: Sendable {
     var kindDescription: String {
         switch kind {
         case .string: "a string"
+        case .path: "a file path"
         case .integer: "an integer"
         case .number: "a number"
         case .boolean: "true or false"
@@ -132,11 +136,13 @@ public struct CommandSpec: Sendable {
     public var returnsImage: Bool
     public var readOnly: Bool
     public var destructive: Bool
+    /// Always waits for the user (scrolling capture): no timeout by default.
+    public var waitsForUser: Bool
     public var transform: (@Sendable ([String: JSONValue]) throws -> JSONValue)?
 
     public init(_ name: String, _ summary: String, details: String = "", params: [ParamSpec] = [], exposure: Exposure = .app,
                 mcp: String? = nil, returnsImage: Bool = false, readOnly: Bool = false, destructive: Bool = false,
-                transform: (@Sendable ([String: JSONValue]) throws -> JSONValue)? = nil) {
+                waitsForUser: Bool = false, transform: (@Sendable ([String: JSONValue]) throws -> JSONValue)? = nil) {
         self.name = name
         self.summary = summary
         self.details = details
@@ -146,7 +152,13 @@ public struct CommandSpec: Sendable {
         self.returnsImage = returnsImage
         self.readOnly = readOnly
         self.destructive = destructive
+        self.waitsForUser = waitsForUser
         self.transform = transform
+    }
+
+    /// The call may wait for the user (an interactive selection), so it should not time out.
+    public func waitsForUser(_ params: [String: JSONValue]) -> Bool {
+        waitsForUser || params["interactive"]?.boolValue == true
     }
 
     /// Words typed after `shotdock`.

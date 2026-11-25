@@ -56,8 +56,10 @@ func run(_ arguments: [String]) -> Int32 {
             return ExitCode.unavailable
         }
         do {
-            let result = try client.call(invocation.command.name, params: .object(invocation.params),
-                                         timeout: invocation.timeout ?? defaultTimeout)
+            // Interactive calls wait for the user as long as it takes.
+            let delay = invocation.params["delay"]?.doubleValue ?? 0
+            let timeout = invocation.timeout ?? (invocation.command.waitsForUser(invocation.params) ? nil : defaultTimeout + delay)
+            let result = try client.call(invocation.command.name, params: .object(invocation.params), timeout: timeout)
             print(invocation.json ? result.jsonString(pretty: true) : TextRendering.render(result))
             return ExitCode.ok
         } catch let error as RPCError {

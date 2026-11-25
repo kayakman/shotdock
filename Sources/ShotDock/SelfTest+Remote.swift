@@ -113,3 +113,107 @@ extension SelfTest {
         check(run.status == 1 && asked().count == 3, "revoked agents are asked again")
     }
 }
+
+extension SelfTest {
+    /// Agents' captures with the real binary (needs Screen Recording and an awake, unlocked screen).
+    func cliCapture() async throws {
+        guard ScreenCapturer.hasPermission else { throw ScreenCaptureError.permissionDenied }
+        let settings = AppSettings.shared
+        settings.agentControlEnabled = true
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        let library = LibraryStore.shared
+        let screen = NSScreen.screens[0], scale = screen.backingScaleFactor
+        // Agents' captures leave the clipboard alone.
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("sin tocar", forType: .string)
+
+        var run = try await shotdock(["capture", "screen", "--json"])
+        var json = run.json ?? [:]
+        check(run.status == 0, "capture screen (\(run.stderr.trimmingCharacters(in: .whitespacesAndNewlines)))")
+        check(json["width"]?.intValue == Int(screen.frame.width * scale) && json["display"] == 1, "full display at full resolution (\(json["width"] ?? nil))")
+        check(json["path"]?.stringValue.map { FileManager.default.fileExists(atPath: $0) } == true, "the image is written to a file")
+        check(json["id"]?.stringValue != nil && json["id"]?.stringValue == library.items.first?.id.uuidString, "and kept in the history")
+        check(NSPasteboard.general.string(forType: .string) == "sin tocar", "the clipboard is untouched")
+        check(app.coordinator.editors.isEmpty, "no editor opens")
+
+        let out = output.deletingLastPathComponent().appendingPathComponent("selftest-cli-area.jpg").path
+        run = try await shotdock(["capture", "area", "--rect", "100,80,300,200", "--out", out, "--json"])
+        json = run.json ?? [:]
+        check(run.status == 0 && json["width"]?.intValue == Int(300 * scale) && json["height"]?.intValue == Int(200 * scale),
+              "area in points becomes pixels (\(json["width"] ?? nil)×\(json["height"] ?? nil))")
+        check(json["path"]?.stringValue == out && (try? Data(contentsOf: URL(fileURLWithPath: out)).prefix(2)) == Data([0xFF, 0xD8]),
+              "--out writes a JPEG where asked")
+        check(json["rect"]?.rect == CGRect(x: 100, y: 80, width: 300, height: 200), "the result says where it was")
+
+        let before = library.items.count
+        run = try await shotdock(["capture", "area", "--rect", "0,0,50,40", "--display", "1", "--no-history", "--copy", "--json"])
+        check(run.status == 0 && run.json?["id"] == .null && library.items.count == before, "--no-history keeps it out of the history")
+        check(NSPasteboard.general.data(forType: .png) != nil, "--copy puts the image on the clipboard")
+
+        run = try await shotdock(["capture", "repeat", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "not_found", "repeat without a previous area is not found")
+        settings.lastArea = ScreenGeometry.flipped(CGRect(x: 10, y: 20, width: 120, height: 90), primaryHeight: screen.frame.height)
+        run = try await shotdock(["capture", "repeat", "--json"])
+        check(run.status == 0 && run.json?["width"]?.intValue == Int(120 * scale), "repeat captures the last area")
+
+        let started = Date()
+        run = try await shotdock(["capture", "area", "--rect", "0,0,20,20", "--delay", "0.6", "--no-history", "--json"])
+        check(run.status == 0 && Date().timeIntervalSince(started) >= 0.6, "--delay waits")
+
+        run = try await shotdock(["capture", "area", "--rect", "0,0,20,20", "--display", "9", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "not_found", "unknown displays are not found")
+        run = try await shotdock(["capture", "area", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "invalid_params", "an area needs rect or --interactive")
+
+        // Windows: by id, and a clear error listing what is open.
+        run = try await shotdock(["windows", "--json"])
+        if let first = run.json?["windows"]?.arrayValue?.first(where: { $0["on_screen"] == true }), let id = first["id"]?.intValue {
+            run = try await shotdock(["capture", "window", "--id", String(id), "--no-shadow", "--json"])
+            json = run.json ?? [:]
+            let frame = first["frame"]?.rect ?? .zero
+            check(run.status == 0 && json["window"]?["id"]?.intValue == id, "capture window --id (\(first["app"]?.stringValue ?? ""))")
+            check(abs(Double(json["width"]?.intValue ?? 0) - frame.width * scale) <= 2 * scale, "window size matches its frame")
+        } else {
+            note("no window to capture")
+        }
+        run = try await shotdock(["capture", "window", "--app", "NoExisteEstaApp", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "not_found" && run.json?["error"]?["message"]?.stringValue?.contains("Open windows") == true,
+              "no matching window lists the open ones")
+
+        // Interactive: the user drags an area while the CLI waits.
+        async let picked = shotdock(["capture", "area", "--interactive", "--json"])
+        var waited = 0
+        while app.coordinator.selection == nil, waited < 100 { try await Task.sleep(for: .milliseconds(50)); waited += 1 }
+        if let view = app.coordinator.selection?.selectionViews.first(where: { $0.snapshot.displayID == screen.displayID }), let window = view.window {
+            let toWindow = { (p: CGPoint) in view.convert(p, to: nil) }
+            send(.leftMouseDown, at: toWindow(CGPoint(x: 200, y: 150)), to: window)
+            send(.leftMouseDragged, at: toWindow(CGPoint(x: 300, y: 200)), to: window)
+            send(.leftMouseUp, at: toWindow(CGPoint(x: 360, y: 250)), to: window)
+        } else {
+            fail("the overlay did not appear for --interactive")
+        }
+        run = try await picked
+        check(run.status == 0 && run.json?["width"]?.intValue == Int(160 * scale) && run.json?["rect"]?.rect == CGRect(x: 200, y: 150, width: 160, height: 100),
+              "--interactive returns what the user selected (\(run.json?["rect"] ?? nil))")
+
+        // Cancelling (Esc) is reported as such.
+        async let cancelled = shotdock(["capture", "area", "--interactive", "--json"])
+        waited = 0
+        while app.coordinator.selection == nil, waited < 100 { try await Task.sleep(for: .milliseconds(50)); waited += 1 }
+        app.coordinator.selection?.selectionViews.first?.onCancel?()
+        run = try await cancelled
+        check(run.status == 1 && run.json?["error"]?["kind"] == "cancelled", "Esc cancels and says so")
+
+        // Scrolling: the session shows its controls; finishing returns the stitched image.
+        async let scrolled = shotdock(["capture", "scroll", "--rect", "100,100,400,300", "--json"])
+        waited = 0
+        while app.coordinator.scrollSession == nil, waited < 100 { try await Task.sleep(for: .milliseconds(50)); waited += 1 }
+        try await Task.sleep(for: .milliseconds(500))
+        app.coordinator.scrollSession?.finish()
+        run = try await scrolled
+        check(run.status == 0 && run.json?["width"]?.intValue == Int(400 * scale) && (run.json?["height"]?.intValue ?? 0) >= Int(300 * scale),
+              "capture scroll returns the stitched image (\(run.json?["width"] ?? nil)×\(run.json?["height"] ?? nil))")
+        check(NSPasteboard.general.string(forType: .string) == nil || NSPasteboard.general.data(forType: .png) != nil, "clipboard as left by --copy")
+    }
+}
