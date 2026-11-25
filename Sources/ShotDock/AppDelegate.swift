@@ -14,11 +14,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         .captureArea, .repeatArea, .captureActiveWindow, .captureWindow, .captureFullscreen, .captureDelayed, .pickColor, .showHistory, .recognizeText, .captureScrolling,
     ]
 
+    /// Clicking the Dock icon with no windows open shows the gallery.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { showGallery() }
+        return true
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let selfTest = SelfTest.isRequested
         if selfTest { AppSettings.useSelfTestStore() }
         NSApp.mainMenu = MainMenu.build(target: self)
         shortcuts = ShortcutManager(settings: .shared, available: Self.availableActions) { [weak self] in self?.perform($0) }
+        DockPresence.shared.start()
         if SelfTest.runIfRequested(app: self) { return }
 
         setUpStatusItem()

@@ -3,7 +3,7 @@ SIGN_IDENTITY ?= ShotDock Local Signing
 APP           := build/ShotDock.app
 BIN_DIR        = $(shell swift build -c $(CONFIG) --show-bin-path)
 
-.PHONY: build app run test selftest selftest-upload signing-cert icons clean
+.PHONY: build app run test selftest selftest-upload install signing-cert icons clean
 
 build:
 	swift build -c $(CONFIG)
@@ -39,6 +39,14 @@ selftest: app
 
 icons:
 	swift design/make-icons.swift
+
+# Release build copied to /Applications (launch at login works best from there).
+install:
+	$(MAKE) app CONFIG=release
+	-pkill -x ShotDock
+	rm -rf /Applications/ShotDock.app
+	cp -R $(APP) /Applications/ShotDock.app
+	open /Applications/ShotDock.app
 
 signing-cert:
 	scripts/make-signing-cert.sh

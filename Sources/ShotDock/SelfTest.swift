@@ -44,6 +44,7 @@ final class SelfTest {
             case "backdrop": try await backdrop()
             case "upload": try await upload()
             case "scroll": try await scroll()
+            case "dock": try await dock()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -360,6 +361,21 @@ final class SelfTest {
         check(coordinator.selection == nil, "Esc closes it")
     }
 
+    /// Dock icon while a window is open, menu-bar-only otherwise.
+    private func dock() async throws {
+        check(NSApp.activationPolicy() == .accessory, "starts as a menu bar app")
+        app.showGallery()
+        try await Task.sleep(for: .seconds(1.5))
+        check(NSApp.activationPolicy() == .regular, "shows in the Dock with the gallery open")
+        if ScreenCapturer.hasPermission {
+            let snapshot = try await ScreenCapturer.snapshotDisplay(containing: CGPoint(x: NSScreen.main!.frame.midX, y: NSScreen.main!.frame.midY))
+            try ImageEncoding.write(snapshot.image, to: sibling("screen"), scale: snapshot.scale)
+        }
+        app.gallery?.close()
+        try await Task.sleep(for: .milliseconds(500))
+        check(NSApp.activationPolicy() == .accessory, "back to the menu bar when it closes")
+    }
+
     /// Scrolling capture: synthetic scrolling frames, then the real path over the screen.
     private func scroll() async throws {
         let coordinator = app.coordinator
@@ -401,7 +417,7 @@ final class SelfTest {
         // Real path: shortcut → overlay → drag → frames from the screen → Return.
         guard ScreenCapturer.hasPermission else { return note("skipping the real scroll path: no permission") }
         coordinator.captureScrolling()
-        try await Task.sleep(for: .seconds(1))
+        try await waitFor(seconds: 5) { coordinator.selection != nil }
         guard let view = coordinator.selection?.selectionViews.first(where: { $0.snapshot.displayID == CGMainDisplayID() }),
               let overlay = view.window else { return fail("no overlay for scrolling") }
         drag(from: view.convert(CGPoint(x: 300, y: 300), to: nil), to: view.convert(CGPoint(x: 600, y: 500), to: nil), in: overlay)
@@ -582,7 +598,7 @@ final class SelfTest {
             var recognised = false
             coordinator.onRecognized = { _, _ in recognised = true }
             coordinator.recognizeText()
-            try await Task.sleep(for: .seconds(1))
+            try await waitFor(seconds: 5) { coordinator.selection != nil }
             if let view = coordinator.selection?.selectionViews.first(where: { $0.snapshot.displayID == CGMainDisplayID() }), let overlay = view.window {
                 drag(from: view.convert(CGPoint(x: 100, y: 100), to: nil), to: view.convert(CGPoint(x: 500, y: 300), to: nil), in: overlay)
                 try await Task.sleep(for: .seconds(2))
@@ -767,6 +783,11 @@ final class SelfTest {
     }
 
     // MARK: Helpers
+
+    private func waitFor(seconds: Double, _ condition: () -> Bool) async throws {
+        let start = Date()
+        while !condition(), Date().timeIntervalSince(start) < seconds { try await Task.sleep(for: .milliseconds(100)) }
+    }
 
     private func send(_ type: NSEvent.EventType, at point: CGPoint, to window: NSWindow, clicks: Int = 1) {
         guard let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,

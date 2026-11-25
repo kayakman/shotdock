@@ -32,6 +32,7 @@ final class GalleryWindowController: NSWindowController, NSWindowDelegate {
         NSApp.activate()
         if window?.isVisible != true { window?.center() }
         showWindow(nil)
+        DockPresence.shared.update()
         window?.makeKeyAndOrderFront(nil)
     }
 

@@ -31,6 +31,7 @@ final class PreferencesWindowController: NSWindowController {
         NSApp.activate()
         if window?.isVisible != true { window?.center() }
         showWindow(nil)
+        DockPresence.shared.update()
         window?.makeKeyAndOrderFront(nil)
     }
 }
@@ -62,12 +63,25 @@ private struct GeneralPreferences: View {
     @Bindable var settings: AppSettings
     let window: () -> NSWindow?
 
+    @State private var loginError: String?
+
+    private var launchAtLogin: Binding<Bool> {
+        Binding(get: { LaunchAtLogin.isEnabled }, set: { value in
+            do { try LaunchAtLogin.set(value) } catch { loginError = error.localizedDescription }
+        })
+    }
+
     private var preview: String {
         FilenameTemplate(settings.filenameTemplate).name(for: Date()) + "." + settings.imageFormat.fileExtension
     }
 
     var body: some View {
         Form {
+            Section("ShotDock") {
+                Toggle("Abrir al iniciar sesión", isOn: launchAtLogin)
+                Toggle("Mostrar en el Dock mientras haya ventanas abiertas", isOn: $settings.showInDock)
+                    .onChange(of: settings.showInDock) { DockPresence.shared.update() }
+            }
             Section("Después de capturar") {
                 Toggle("Copiar al portapapeles", isOn: $settings.copyAfterCapture)
                 Toggle("Abrir el editor", isOn: $settings.openEditorAfterCapture)
@@ -117,6 +131,11 @@ private struct GeneralPreferences: View {
             }
         }
         .formStyle(.grouped)
+        .alert("No se pudo cambiar el inicio de sesión", isPresented: Binding(get: { loginError != nil }, set: { if !$0 { loginError = nil } })) {
+            Button("OK") { loginError = nil }
+        } message: {
+            Text(loginError ?? "")
+        }
     }
 
     private func chooseFolder() {

@@ -65,8 +65,8 @@ enum RecognitionPanel {
             do {
                 let result = try await TextRecognition.recognize(image)
                 let sheet = NSWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: false)
-                let view = RecognitionView(result: result, joinLines: AppSettings.shared.ocrJoinLines) { [weak window, weak sheet] in
-                    if let sheet { window?.endSheet(sheet) }
+                let view = RecognitionView(result: result, joinLines: AppSettings.shared.ocrJoinLines) { [weak sheet] in
+                    if let sheet { window.endSheet(sheet) }
                 }
                 sheet.contentView = NSHostingView(rootView: view)
                 sheet.setContentSize(sheet.contentView!.fittingSize)

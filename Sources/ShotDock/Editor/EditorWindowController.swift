@@ -113,6 +113,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     func show() {
         NSApp.activate()
         showWindow(nil)
+        DockPresence.shared.update()
         window?.makeKeyAndOrderFront(nil)
         window?.makeFirstResponder(canvas)
     }

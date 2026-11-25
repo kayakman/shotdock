@@ -30,6 +30,8 @@ final class AppSettings {
     var s3: S3Configuration { didSet { save(s3, "s3") } }
     /// Tallest scrolling capture, in pixels.
     var scrollMaxHeight: Int { didSet { defaults.set(scrollMaxHeight, forKey: "scrollMaxHeight") } }
+    /// Show in the Dock while an editor, the gallery or the preferences are open.
+    var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock") } }
     var uploadAfterCapture: Bool { didSet { defaults.set(uploadAfterCapture, forKey: "uploadAfterCapture") } }
     /// Last selected area in AppKit global coordinates, for "repeat area".
     var lastArea: CGRect? {
@@ -52,6 +54,7 @@ final class AppSettings {
         historyLimit = defaults.object(forKey: "historyLimit") as? Int ?? 200
         ocrJoinLines = defaults.object(forKey: "ocrJoinLines") as? Bool ?? false
         s3 = defaults.data(forKey: "s3").flatMap { try? JSONDecoder().decode(S3Configuration.self, from: $0) } ?? S3Configuration()
+        showInDock = defaults.object(forKey: "showInDock") as? Bool ?? true
         scrollMaxHeight = defaults.object(forKey: "scrollMaxHeight") as? Int ?? 20_000
         uploadAfterCapture = defaults.object(forKey: "uploadAfterCapture") as? Bool ?? false
         lastBackdrop = defaults.data(forKey: "lastBackdrop").flatMap { try? JSONDecoder().decode(Backdrop.self, from: $0) } ?? Backdrop()
