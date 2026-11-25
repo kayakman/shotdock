@@ -35,7 +35,15 @@ public enum TextRendering {
         case let .array(items) where !items.isEmpty && items.allSatisfy({ $0.objectValue != nil }):
             return table(items.compactMap(\.objectValue))
         case let .object(object):
-            // A record holding one list of records (e.g. {"windows": […]}) shows the table.
+            // A record holding one list of records (e.g. {"windows": […]}) shows the table,
+            // after the other fields.
+            let lists = object.filter { $0.value.arrayValue.map { !$0.isEmpty && $0.allSatisfy { $0.objectValue != nil } } ?? false }
+            if lists.count == 1, let (key, list) = lists.first {
+                if object.count == 1 { return render(list) }
+                var rest = object
+                rest[key] = nil
+                return render(.object(rest)) + "\n\n" + render(list)
+            }
             if object.count == 1, let (_, list) = object.first, case .array = list { return render(list) }
             let width = object.keys.map(\.count).max() ?? 0
             return object.keys.sorted().map { key in

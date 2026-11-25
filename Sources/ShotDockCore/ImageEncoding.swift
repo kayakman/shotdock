@@ -52,4 +52,12 @@ public enum ImageEncoding {
         else { throw ImageEncodingError.cannotDecode }
         return image
     }
+
+    /// Pixels per point recorded in the file (its DPI ÷ 72), 1 if none.
+    public static func scale(of data: Data) -> CGFloat {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let dpi = properties[kCGImagePropertyDPIWidth] as? Double, dpi > 72 else { return 1 }
+        return CGFloat((dpi / 72 * 4).rounded() / 4)
+    }
 }

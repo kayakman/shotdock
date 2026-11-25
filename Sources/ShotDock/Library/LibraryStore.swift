@@ -84,6 +84,25 @@ final class LibraryStore {
 
     func document(_ id: UUID) -> CaptureDocument? { try? library?.document(id) }
 
+    func item(_ id: UUID) -> CaptureItem? { library?.item(id) }
+
+    func items(matching filter: HistoryFilter) -> [CaptureItem] { library?.items(matching: filter) ?? [] }
+
+    func originalURL(_ id: UUID) -> URL? { library?.originalURL(id) }
+
+    func thumbnailURL(_ id: UUID) -> URL? { library?.thumbnailURL(id) }
+
+    /// A capture named the way agents do: id, id prefix, last, last-1…
+    func resolve(_ reference: String) throws -> UUID {
+        guard isEnabled else { throw RPCError.notFound("The history is off (Preferencias › Historial)") }
+        return try CaptureReference.resolve(reference, in: items)
+    }
+
+    func setRecognizedText(_ id: UUID, _ text: String) {
+        try? library?.setRecognizedText(id, text)
+        refresh()
+    }
+
     func thumbnail(_ id: UUID) -> NSImage? {
         if let cached = thumbnails[id] { return cached }
         guard let url = library?.thumbnailURL(id), let image = NSImage(contentsOf: url) else { return nil }

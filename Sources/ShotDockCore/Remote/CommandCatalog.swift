@@ -3,7 +3,7 @@ import Foundation
 /// The commands, in the order help lists them. Each phase of the CLI adds
 /// its own; the app answers every `.app` command.
 public enum CommandCatalog {
-    public static let all: [CommandSpec] = general + screens + captures
+    public static let all: [CommandSpec] = general + screens + captures + history
 
     public static func command(_ name: String) -> CommandSpec? { all.first { $0.name == name } }
 
@@ -113,5 +113,41 @@ public enum CommandCatalog {
                 ParamSpec("auto", .boolean, "Scroll automatically"),
                 ParamSpec("max_height", .integer, "Tallest image in pixels (default: as in the preferences)"),
             ] + delivery, mcp: "capture_scrolling", returnsImage: true, waitsForUser: true),
+    ]
+
+    // MARK: History
+
+    static let target = ParamSpec("target", .string, "Capture: its history id (or the first characters), last, last-1…",
+                                  required: true, positional: true)
+
+    static let history: [CommandSpec] = [
+        CommandSpec("history.list", "List the captures in the history, newest first", params: [
+            ParamSpec("limit", .integer, "How many", default: 20),
+            ParamSpec("search", .string, "Text in annotations, recognised text (OCR), file name or link"),
+            ParamSpec("since", .string, "Newer than a date (2026-11-25) or an age (30m, 2h, 3d, 1w)"),
+            ParamSpec("uploaded", .boolean, "Only uploaded captures (false: never uploaded)"),
+            ParamSpec("saved", .boolean, "Only saved captures (false: never saved)"),
+        ], mcp: "history_list", readOnly: true),
+        CommandSpec("history.show", "A capture with its annotations, crop and backdrop, and the image as edited", details: """
+            The image is written to a file (path); annotations come with their ids, in the format annotate takes.
+            """, params: [target], mcp: "history_get", returnsImage: true, readOnly: true),
+        CommandSpec("history.open", "Open a capture in the editor", params: [target], mcp: "history_open"),
+        CommandSpec("history.copy", "Copy a capture, as edited, to the clipboard", params: [target], mcp: "history_copy"),
+        CommandSpec("history.save", "Save a capture, as edited, in the folder set in the preferences", params: [target], mcp: "history_save"),
+        CommandSpec("history.export", "Write a capture, as edited, to a file", params: [
+            target,
+            ParamSpec("out", .path, "File to write (.png or .jpg)", required: true),
+            ParamSpec("format", .choice(["png", "jpeg"]), "Format (default: from the extension)"),
+        ], mcp: "history_export", returnsImage: true),
+        CommandSpec("history.reveal", "Show the saved file of a capture in the Finder", params: [target], mcp: "history_reveal"),
+        CommandSpec("history.delete", "Delete captures from the history (saved files are not touched)", params: [
+            ParamSpec("targets", .strings, "Captures to delete", positional: true),
+            ParamSpec("all", .boolean, "Empty the whole history"),
+        ], mcp: "history_delete", destructive: true),
+        CommandSpec("history.import", "Add an image file to the history, to annotate, recognise or upload it", params: [
+            ParamSpec("file", .path, "Image file (PNG, JPEG, HEIC, TIFF…)", required: true, positional: true),
+            ParamSpec("scale", .number, "Pixels per point (default: from the file's resolution)"),
+        ], mcp: "history_import", returnsImage: true),
+        CommandSpec("history.gallery", "Show the history window (Capturas recientes)", mcp: "show_gallery"),
     ]
 }

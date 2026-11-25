@@ -18,6 +18,8 @@ extension SelfTest {
         let process = Process()
         process.executableURL = CLIInstaller.helperURL
         process.arguments = args
+        // From the repository, like a person typing `shotdock …` there.
+        process.currentDirectoryURL = output.deletingLastPathComponent().deletingLastPathComponent()
         process.environment = ProcessInfo.processInfo.environment.merging(["SHOTDOCK_SOCKET": socketPath]) { _, new in new }
         let out = Pipe(), err = Pipe(), input = Pipe()
         process.standardOutput = out
@@ -263,5 +265,88 @@ extension SelfTest {
         }
         check(reply(6)?["isError"] == true && reply(6)?["content"]?[0]?["text"]?.stringValue?.hasPrefix("invalid_params") == true,
               "bad arguments are a tool error")
+    }
+}
+
+extension SelfTest {
+    /// The history from the CLI, with imported images (no screen capture needed).
+    func cliHistory() async throws {
+        let settings = AppSettings.shared
+        settings.agentControlEnabled = true
+        settings.saveFolder = output.deletingLastPathComponent().appendingPathComponent("selftest-saved", isDirectory: true)
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        let folder = output.deletingLastPathComponent()
+        let first = folder.appendingPathComponent("selftest-import-1.png"), second = folder.appendingPathComponent("selftest-import-2.png")
+        try ImageEncoding.write(Self.testPattern(width: 800, height: 500, text: "Uno"), to: first, scale: 2)
+        try ImageEncoding.write(Self.testPattern(width: 600, height: 400, text: "Dos"), to: second, scale: 1)
+
+        var run = try await shotdock(["history", "list", "--json"])
+        check(run.status == 0 && run.json?["captures"] == [] && run.json?["enabled"] == true, "empty history")
+        run = try await shotdock(["history", "show", "last", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "not_found", "last of an empty history is not found")
+
+        run = try await shotdock(["history", "import", first.path, "--json"])
+        let firstID = run.json?["id"]?.stringValue ?? ""
+        check(run.status == 0 && run.json?["scale"]?.doubleValue == 2 && run.json?["width"] == 800, "import keeps the size and reads the scale from the DPI")
+        // Relative paths are resolved where the CLI runs, not in the app.
+        run = try await shotdock(["history", "import", "build/selftest-import-2.png", "--json"])
+        check(run.status == 0 && run.json?["scale"]?.doubleValue == 1, "relative paths work (\(run.stderr.trimmingCharacters(in: .whitespacesAndNewlines)))")
+
+        run = try await shotdock(["history", "list", "--limit", "1", "--json"])
+        check(run.json?["total"] == 2 && run.json?["captures"]?.arrayValue?.count == 1 && run.json?["captures"]?[0]?["width"] == 600,
+              "list, newest first, limited")
+        run = try await shotdock(["history", "list"])
+        check(run.status == 0 && run.stdout.contains("\n\nID ") && run.stdout.hasPrefix("enabled:"), "text table of captures")
+
+        // A text annotation makes the capture findable.
+        let id = UUID(uuidString: firstID)!
+        var document = LibraryStore.shared.document(id)!
+        document.annotations = [Annotation(shape: .text(origin: CGPoint(x: 40, y: 40), string: "Factura de noviembre"), style: AnnotationStyle())]
+        LibraryStore.shared.update(id, with: document)
+        run = try await shotdock(["history", "list", "--search", "FACTURA", "--json"])
+        check(run.json?["captures"]?.arrayValue?.map { $0["id"] } == [.string(firstID)], "search finds text annotations")
+        run = try await shotdock(["history", "list", "--since", "1h", "--no-saved", "--json"])
+        check(run.json?["total"] == 2, "--since and --no-saved filter")
+
+        run = try await shotdock(["history", "show", String(firstID.prefix(8)), "--json"])
+        let shown = run.json ?? [:]
+        check(run.status == 0 && shown["id"] == .string(firstID) && shown["annotations"]?[0]?["type"] == "text", "show by id prefix, with annotations")
+        check(shown["path"]?.stringValue.map { FileManager.default.fileExists(atPath: $0) } == true && shown["open_in_editor"] == false,
+              "show writes the edited image")
+
+        let export = folder.appendingPathComponent("selftest-cli-export.jpg").path
+        run = try await shotdock(["history", "export", "last-1", "--out", export, "--json"])
+        check(run.status == 0 && (try? Data(contentsOf: URL(fileURLWithPath: export)).prefix(2)) == Data([0xFF, 0xD8]), "export to a JPEG")
+
+        run = try await shotdock(["history", "reveal", "last", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "not_found", "reveal needs a saved capture")
+        run = try await shotdock(["history", "save", "last", "--json"])
+        let saved = run.json?["saved_path"]?.stringValue ?? ""
+        check(run.status == 0 && saved.hasPrefix(settings.saveFolder.path) && FileManager.default.fileExists(atPath: saved), "save to the preferences' folder")
+        check(LibraryStore.shared.items.first?.savedPath == saved, "the history remembers where")
+        run = try await shotdock(["history", "list", "--saved", "--json"])
+        check(run.json?["total"] == 1, "--saved")
+
+        NSPasteboard.general.clearContents()
+        run = try await shotdock(["history", "copy", "last", "--json"])
+        check(run.status == 0 && NSPasteboard.general.data(forType: .png) != nil, "copy puts the image on the clipboard")
+
+        run = try await shotdock(["history", "open", firstID, "--json"])
+        check(run.status == 0 && app.coordinator.editors.contains { $0.libraryItemID == id }, "open shows the editor")
+        run = try await shotdock(["history", "show", firstID, "--json"])
+        check(run.json?["open_in_editor"] == true, "show knows the editor is open")
+        app.coordinator.editors.forEach { $0.close() }
+
+        run = try await shotdock(["history", "gallery", "--json"])
+        check(run.status == 0 && app.gallery?.window?.isVisible == true, "gallery opens")
+        app.gallery?.window?.close()
+
+        run = try await shotdock(["history", "delete", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "invalid_params", "delete needs captures or --all")
+        run = try await shotdock(["history", "delete", "last", "--json"])
+        check(run.status == 0 && run.json?["deleted"] == 1 && LibraryStore.shared.items.count == 1, "delete one")
+        run = try await shotdock(["history", "delete", "--all", "--json"])
+        check(run.status == 0 && LibraryStore.shared.items.isEmpty, "delete --all empties the history")
     }
 }

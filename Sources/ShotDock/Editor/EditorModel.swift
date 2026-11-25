@@ -140,9 +140,7 @@ final class EditorModel {
     /// Style for new annotations; sizes scale with the capture so marks look
     /// the same on Retina and non-Retina captures.
     var currentStyle: AnnotationStyle {
-        let factor = document.scale / 2
-        return AnnotationStyle(color: color, lineWidth: weight.rawValue * factor,
-                               fontSize: (20 + weight.rawValue * 3) * factor)
+        AnnotationStyle.standard(color: color, weight: weight.rawValue, scale: document.scale)
     }
 
     var selected: Annotation? { document.annotations.first { $0.id == selectedID } }

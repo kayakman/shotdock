@@ -15,6 +15,8 @@ public struct CaptureItem: Codable, Identifiable, Equatable, Sendable {
     public var savedPath: String?
     /// Link of the last upload.
     public var uploadedURL: String?
+    /// Text found by OCR, kept so the history can be searched by it.
+    public var recognizedText: String?
 }
 
 /// The history of captures ("the dock"): every capture is kept with its
@@ -67,7 +69,7 @@ public final class CaptureLibrary {
         try ImageEncoding.write(document.image, to: originalURL(id), scale: document.scale)
         var item = CaptureItem(id: id, createdAt: document.createdAt, scale: document.scale,
                                pixelWidth: document.image.width, pixelHeight: document.image.height,
-                               annotationCount: 0, savedPath: nil, uploadedURL: nil)
+                               annotationCount: 0, savedPath: nil, uploadedURL: nil, recognizedText: nil)
         try writeDocumentState(document, item: &item)
         items.insert(item, at: 0)
         items.sort { $0.createdAt > $1.createdAt }
@@ -96,6 +98,12 @@ public final class CaptureLibrary {
         try saveIndex()
     }
 
+    public func setRecognizedText(_ id: UUID, _ text: String) throws {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].recognizedText = text
+        try saveIndex()
+    }
+
     public func delete(_ ids: Set<UUID>) throws {
         for id in ids { try? fileManager.removeItem(at: folder(id)) }
         items.removeAll { ids.contains($0.id) }
@@ -117,7 +125,7 @@ public final class CaptureLibrary {
         guard let item = item(id) else { throw CocoaError(.fileNoSuchFile) }
         let image = try ImageEncoding.image(from: Data(contentsOf: originalURL(id)))
         var document = CaptureDocument(image: image, scale: item.scale, createdAt: item.createdAt)
-        if let data = try? Data(contentsOf: documentURL(id)), let state = try? Self.decoder.decode(DocumentState.self, from: data) {
+        if let state = try? documentState(id) {
             document.annotations = state.annotations
             document.crop = state.crop
             document.backdrop = state.backdrop
@@ -125,9 +133,14 @@ public final class CaptureLibrary {
         return document
     }
 
+    /// Annotations, crop and backdrop without loading the image.
+    func documentState(_ id: UUID) throws -> DocumentState {
+        try Self.decoder.decode(DocumentState.self, from: Data(contentsOf: documentURL(id)))
+    }
+
     // MARK: Private
 
-    private struct DocumentState: Codable {
+    struct DocumentState: Codable {
         var annotations: [Annotation]
         var crop: CGRect?
         var backdrop: Backdrop?
