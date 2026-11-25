@@ -50,7 +50,7 @@ public enum TextRendering {
                 let text = render(object[key]!)
                 let label = (key + ":").padding(toLength: width + 1, withPad: " ", startingAt: 0)
                 let nested = object[key]!.objectValue != nil && object[key]!.rect == nil && object[key]!.point == nil
-                if nested || text.contains("\n") { return label + "\n" + text.split(separator: "\n").map { "  " + $0 }.joined(separator: "\n") }
+                if nested || text.contains("\n") { return key + ":\n" + text.split(separator: "\n").map { "  " + $0 }.joined(separator: "\n") }
                 return label + " " + text
             }.joined(separator: "\n")
         case let .array(items): return items.isEmpty ? "(none)" : items.map(cell).joined(separator: "\n")
