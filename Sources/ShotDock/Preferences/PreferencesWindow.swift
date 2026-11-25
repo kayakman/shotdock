@@ -243,19 +243,12 @@ private struct ShortcutsPane: View {
         .formStyle(.columns)
     }
 
-    // A combo belongs to one action across both sets: global hotkeys would swallow it otherwise.
     private func globalBinding(_ action: ShortcutAction) -> Binding<KeyCombo?> {
-        Binding(get: { settings.shortcuts.combo(for: action) }, set: { combo in
-            if let combo { settings.editorShortcuts.release(combo) }
-            settings.shortcuts.set(combo, for: action)
-        })
+        Binding(get: { settings.shortcuts.combo(for: action) }, set: { settings.setShortcut($0, for: action) })
     }
 
     private func editorBinding(_ action: EditorAction) -> Binding<KeyCombo?> {
-        Binding(get: { settings.editorShortcuts.combo(for: action) }, set: { combo in
-            if let combo { settings.shortcuts.release(combo) }
-            settings.editorShortcuts.set(combo, for: action)
-        })
+        Binding(get: { settings.editorShortcuts.combo(for: action) }, set: { settings.setShortcut($0, for: action) })
     }
 }
 

@@ -59,3 +59,62 @@ public enum KeyNames {
 
     public static func ansiName(_ keyCode: Int) -> String? { ansi[keyCode] }
 }
+
+public extension KeyCombo {
+    /// Reads "⇧⌘2", "cmd+shift+2", "ctrl-opt-o", "F5"… Character keys use the
+    /// US layout's key positions.
+    init?(parsing text: String) {
+        var rest = text.trimmingCharacters(in: .whitespaces)
+        var modifiers = 0
+        let symbols: [Character: Int] = ["⌘": Self.command, "⇧": Self.shift, "⌥": Self.option, "⌃": Self.control]
+        while let first = rest.first, let flag = symbols[first], rest.count > 1 {
+            modifiers |= flag
+            rest.removeFirst()
+        }
+        let names: [String: Int] = ["cmd": Self.command, "command": Self.command, "shift": Self.shift, "opt": Self.option,
+                                    "option": Self.option, "alt": Self.option, "ctrl": Self.control, "control": Self.control]
+        var parts = rest.split(whereSeparator: { $0 == "+" || $0 == "-" }).map { String($0).trimmingCharacters(in: .whitespaces) }
+        // "cmd+-" or "⌘-": the key itself is a dash.
+        if rest.hasSuffix("-") || rest.hasSuffix("+") { parts.append(rest.hasSuffix("-") ? "-" : "+") }
+        guard let key = parts.popLast() else { return nil }
+        for part in parts {
+            guard let flag = names[part.lowercased()] else { return nil }
+            modifiers |= flag
+        }
+        guard let code = KeyNames.keyCode(for: key) else { return nil }
+        self.init(keyCode: code, modifiers: modifiers)
+    }
+
+    /// "ctrl+opt+shift+cmd+2", readable anywhere.
+    var plainDescription: String {
+        var parts: [String] = []
+        if modifiers & Self.control != 0 { parts.append("ctrl") }
+        if modifiers & Self.option != 0 { parts.append("opt") }
+        if modifiers & Self.shift != 0 { parts.append("shift") }
+        if modifiers & Self.command != 0 { parts.append("cmd") }
+        parts.append(KeyNames.plainName(keyCode))
+        return parts.joined(separator: "+")
+    }
+}
+
+public extension KeyNames {
+    static let plain: [Int: String] = [
+        0x24: "return", 0x30: "tab", 0x31: "space", 0x33: "delete", 0x35: "esc", 0x75: "forwarddelete",
+        0x7B: "left", 0x7C: "right", 0x7D: "down", 0x7E: "up", 0x73: "home", 0x77: "end", 0x74: "pageup", 0x79: "pagedown",
+    ]
+
+    static func plainName(_ keyCode: Int) -> String {
+        plain[keyCode] ?? fixed[keyCode] ?? ansi[keyCode]?.lowercased() ?? "#\(keyCode)"
+    }
+
+    static func keyCode(for name: String) -> Int? {
+        let lower = name.lowercased()
+        let aliases = ["enter": 0x24, "backspace": 0x33, "escape": 0x35, "del": 0x75, "spacebar": 0x31]
+        if let code = aliases[lower] { return code }
+        if let code = plain.first(where: { $0.value == lower })?.key { return code }
+        if let code = fixed.first(where: { $0.value.lowercased() == lower })?.key { return code }
+        if let code = ansi.first(where: { $0.value.lowercased() == lower })?.key { return code }
+        if lower.hasPrefix("#"), let code = Int(lower.dropFirst()) { return code }
+        return nil
+    }
+}

@@ -565,3 +565,64 @@ extension SelfTest {
         check(CommandCatalog.tools.allSatisfy { $0.name != "s3.credentials" }, "S3 keys are not an MCP tool")
     }
 }
+
+extension SelfTest {
+    /// Preferences and shortcuts from the CLI.
+    func cliPrefs() async throws {
+        let settings = AppSettings.shared
+        settings.agentControlEnabled = true
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+
+        var run = try await shotdock(["prefs", "list", "--json"])
+        let all = run.json?["preferences"]?.arrayValue ?? []
+        check(run.status == 0 && all.count == Preferences.all.count && all.allSatisfy { $0["value"] != .null }, "prefs list: every preference has a value")
+        run = try await shotdock(["prefs", "get", "image_format", "--json"])
+        check(run.json?["value"] == "png", "prefs get")
+        run = try await shotdock(["prefs", "set", "image_format", "jpeg", "--json"])
+        check(run.status == 0 && settings.imageFormat == .jpeg, "prefs set image_format jpeg")
+        run = try await shotdock(["prefs", "set", "capture_delay", "99", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "invalid_params", "out-of-range values are refused")
+        _ = try await shotdock(["prefs", "set", "capture_delay", "5"])
+        _ = try await shotdock(["prefs", "set", "copy_after_capture", "false"])
+        check(settings.captureDelay == 5 && !settings.copyAfterCapture, "numbers and booleans")
+        run = try await shotdock(["prefs", "set", "history_limit", "all", "--json"])
+        check(settings.historyLimit == Int.max && run.json?["value"] == "all", "history_limit all")
+        let folder = output.deletingLastPathComponent().path
+        _ = try await shotdock(["prefs", "set", "save_folder", folder])
+        check(settings.saveFolder.path == folder, "save_folder")
+        run = try await shotdock(["prefs", "set", "agent_control", "false", "--json"])
+        check(run.status == 1 && settings.agentControlEnabled, "agent control cannot be changed from outside")
+        _ = try await shotdock(["prefs", "set", "s3.provider", "r2"])
+        check(settings.s3.provider == .r2 && settings.s3.pathStyle && settings.s3.endpoint.contains("r2"), "s3.provider brings its endpoint, like the pane")
+        run = try await shotdock(["prefs", "set", "nonsense", "1", "--json"])
+        check(run.status == 2, "unknown keys are a usage error")
+
+        run = try await shotdock(["shortcuts", "list", "--json"])
+        let rows = run.json?["shortcuts"]?.arrayValue ?? []
+        let area = rows.first { $0["action"] == "capture_area" }
+        check(rows.count == ShortcutNames.all.count && area?["keys"] == "shift+cmd+2" && area?["scope"] == "global", "shortcuts list")
+        run = try await shotdock(["shortcuts", "set", "capture_window", "shift+cmd+2", "--json"])
+        check(run.status == 0 && run.json?["released"] == ["capture_area"] && settings.shortcuts.combo(for: .captureWindow)?.keyCode == 0x13,
+              "a combo moves to its new action")
+        run = try await shotdock(["shortcuts", "set", "editor.save", "⌘U", "--json"])
+        check(run.json?["released"] == ["editor.upload"] && settings.editorShortcuts.combo(for: .upload) == nil, "editor shortcuts too")
+        run = try await shotdock(["shortcuts", "set", "capture_area", "2", "--json"])
+        check(run.status == 1 && run.json?["error"]?["message"]?.stringValue?.contains("needs") == true, "global shortcuts need a modifier")
+        run = try await shotdock(["shortcuts", "set", "capture_area", "--default", "--json"])
+        check(settings.shortcuts.combo(for: .captureArea) == ShortcutAction.captureArea.defaultCombo, "--default")
+        run = try await shotdock(["shortcuts", "set", "capture_area", "--off", "--json"])
+        check(settings.shortcuts.combo(for: .captureArea) == nil, "--off")
+
+        run = try await shotdock(["open", "preferences", "--tab", "agents", "--json"])
+        try await Task.sleep(for: .milliseconds(400))
+        let window = NSApp.windows.first { $0.identifier?.rawValue == "preferences" }
+        check(run.status == 0 && window?.isVisible == true && window?.title == "Agentes", "open preferences on the Agentes tab")
+        if let window, ScreenCapturer.hasPermission, (try? await ScreenCapturer.snapshotAllDisplays()) != nil {
+            try await snapshot(window, to: sibling("agentes"))
+        } else if let view = window?.contentView {
+            render(view, to: sibling("agentes"))
+        }
+        window?.close()
+    }
+}

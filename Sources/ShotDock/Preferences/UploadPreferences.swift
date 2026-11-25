@@ -86,13 +86,7 @@ struct UploadPreferences: View {
 
     private var provider: Binding<S3Configuration.Provider> {
         Binding(get: { settings.s3.provider }, set: { newValue in
-            var config = settings.s3
-            config.provider = newValue
-            config.region = newValue.defaultRegion
-            config.endpoint = newValue.defaultEndpoint(region: config.region)
-            config.pathStyle = newValue.usesPathStyle
-            if newValue == .r2 { config.publicReadACL = false }
-            settings.s3 = config
+            settings.s3.switchProvider(to: newValue)
         })
     }
 

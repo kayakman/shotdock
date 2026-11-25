@@ -42,3 +42,17 @@ private let shiftCmd = KeyCombo.command | KeyCombo.shift
     #expect(editor.combo(for: .save) == nil)
     #expect(editor.combo(for: .saveAs) != nil)
 }
+
+@Test func combosParseFromSymbolsAndWords() {
+    let area = KeyCombo(keyCode: 0x13, modifiers: shiftCmd)
+    #expect(KeyCombo(parsing: "⇧⌘2") == area)
+    #expect(KeyCombo(parsing: "cmd+shift+2") == area)
+    #expect(KeyCombo(parsing: "Shift-Cmd-2") == area)
+    #expect(KeyCombo(parsing: "⌃⌥O") == KeyCombo(keyCode: 0x1F, modifiers: KeyCombo.control | KeyCombo.option))
+    #expect(KeyCombo(parsing: "F5") == KeyCombo(keyCode: 0x60, modifiers: 0))
+    #expect(KeyCombo(parsing: "cmd+space") == KeyCombo(keyCode: 0x31, modifiers: KeyCombo.command))
+    #expect(KeyCombo(parsing: "cmd+-") == KeyCombo(keyCode: 0x1B, modifiers: KeyCombo.command))
+    #expect(KeyCombo(parsing: "hyper+2") == nil && KeyCombo(parsing: "cmd+ñ") == nil)
+    #expect(area.plainDescription == "shift+cmd+2")
+    #expect(KeyCombo(parsing: area.plainDescription) == area)
+}

@@ -195,6 +195,10 @@ public struct CLIParser: Sendable {
             let v = try numbers(4)
             return ["x": .number(v[0]), "y": .number(v[1]), "width": .number(v[2]), "height": .number(v[3])]
         case .strings: return [.string(text)]
+        case .scalar:
+            if let bool = Self.bool(text), ["true", "false"].contains(text.lowercased()) { return .bool(bool) }
+            if let number = Double(text), !text.hasPrefix("+") { return .number(number) }
+            return .string(text)
         case .json:
             let data: Data
             if text == "-" {
@@ -234,6 +238,7 @@ public struct CLIParser: Sendable {
         case .color: "colour"
         case let .choice(values): values.joined(separator: "|")
         case .strings: "text"
+        case .scalar: "value"
         case .json: "json|@file|-"
         }
     }

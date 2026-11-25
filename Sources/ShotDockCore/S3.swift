@@ -65,6 +65,15 @@ public struct S3Configuration: Codable, Equatable, Sendable {
 
     public init() {}
 
+    /// Changes the service, with its usual region, endpoint and addressing.
+    public mutating func switchProvider(to provider: Provider) {
+        self.provider = provider
+        region = provider.defaultRegion
+        endpoint = provider.defaultEndpoint(region: region)
+        pathStyle = provider.usesPathStyle
+        if provider == .r2 { publicReadACL = false }  // R2 has no ACLs
+    }
+
     public var isComplete: Bool { !bucket.isEmpty && URL(string: endpoint)?.host != nil && !region.isEmpty }
 
     /// Object key for an upload: prefix + name.

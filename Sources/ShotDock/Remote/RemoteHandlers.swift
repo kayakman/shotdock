@@ -7,7 +7,7 @@ import ShotDockCore
 @MainActor
 enum RemoteHandlers {
     static var all: [String: RemoteHandler] {
-        [general, screens, RemoteCapture.handlers, RemoteHistory.handlers, RemoteEditing.handlers, RemoteInspection.handlers, RemoteSharing.handlers].reduce(into: [:]) { all, part in all.merge(part) { a, _ in a } }
+        [general, screens, RemoteCapture.handlers, RemoteHistory.handlers, RemoteEditing.handlers, RemoteInspection.handlers, RemoteSharing.handlers, RemotePreferences.handlers].reduce(into: [:]) { all, part in all.merge(part) { a, _ in a } }
     }
 
     // MARK: General

@@ -70,6 +70,18 @@ final class AppSettings {
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
     }
 
+    /// A combo belongs to one action across both sets: a global hotkey would
+    /// swallow it in the editor otherwise.
+    func setShortcut(_ combo: KeyCombo?, for action: ShortcutAction) {
+        if let combo { editorShortcuts.release(combo) }
+        shortcuts.set(combo, for: action)
+    }
+
+    func setShortcut(_ combo: KeyCombo?, for action: EditorAction) {
+        if let combo { shortcuts.release(combo) }
+        editorShortcuts.set(combo, for: action)
+    }
+
     /// A clean, temporary settings store for selftests.
     static func useSelfTestStore() {
         let name = "app.shotdock.ShotDock.selftest"

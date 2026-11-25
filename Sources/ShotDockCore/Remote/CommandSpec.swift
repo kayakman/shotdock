@@ -22,6 +22,8 @@ public struct ParamSpec: Sendable {
         case choice([String])
         /// A list of strings; on the command line, a repeated flag or the trailing positionals.
         case strings
+        /// A string, number or boolean; on the command line true/false and numbers are read as such.
+        case scalar
         /// Any JSON, described by `schema`; on the command line inline JSON, `@file` or `-` (stdin).
         case json(schema: JSONValue?)
     }
@@ -65,6 +67,7 @@ public struct ParamSpec: Sendable {
         case .color: schema = ["type": "string"]
         case let .choice(values): schema = ["type": "string", "enum": .array(values.map(JSONValue.string))]
         case .strings: schema = ["type": "array", "items": ["type": "string"]]
+        case .scalar: schema = ["type": ["string", "number", "boolean"]]
         case let .json(custom): schema = custom?.objectValue ?? [:]
         }
         schema["description"] = .string(summary)
@@ -89,6 +92,7 @@ public struct ParamSpec: Sendable {
             guard let text = value.stringValue else { return "\(name) must be one of \(values.joined(separator: ", "))" }
             return values.contains(text) ? nil : "\(name) must be one of \(values.joined(separator: ", ")), not \"\(text)\""
         case .strings: ok = value.arrayValue?.allSatisfy { $0.stringValue != nil } ?? false
+        case .scalar: ok = value.stringValue != nil || value.doubleValue != nil || value.boolValue != nil
         case .json: ok = true
         }
         return ok ? nil : "\(name) must be \(kindDescription)"
@@ -107,6 +111,7 @@ public struct ParamSpec: Sendable {
         case .color: "a colour"
         case let .choice(values): "one of \(values.joined(separator: ", "))"
         case .strings: "a list of strings"
+        case .scalar: "a value"
         case .json: "JSON"
         }
     }

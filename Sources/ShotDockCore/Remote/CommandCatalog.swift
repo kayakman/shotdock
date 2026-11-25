@@ -3,7 +3,7 @@ import Foundation
 /// The commands, in the order help lists them. Each phase of the CLI adds
 /// its own; the app answers every `.app` command.
 public enum CommandCatalog {
-    public static let all: [CommandSpec] = general + screens + captures + history + editing + inspection + sharing
+    public static let all: [CommandSpec] = general + screens + captures + history + editing + inspection + sharing + settings
 
     public static func command(_ name: String) -> CommandSpec? { all.first { $0.name == name } }
 
@@ -321,5 +321,32 @@ public enum CommandCatalog {
                 ParamSpec("secret_access_key", .string, "Secret access key (better typed when asked)"),
                 ParamSpec("clear", .boolean, "Remove the keys"),
             ], tool: false),
+    ]
+
+    // MARK: Preferences and shortcuts
+
+    static let settings: [CommandSpec] = [
+        CommandSpec("prefs.get", "Read the preferences (all, or one)", params: [
+            ParamSpec("key", .choice(Preferences.all.map(\.key)), "Preference", positional: true),
+        ], mcp: "get_preferences", readOnly: true),
+        CommandSpec("prefs.list", "List every preference with its value, type and meaning", exposure: .alias(of: "prefs.get")) { _ in [:] },
+        CommandSpec("prefs.set", "Change a preference", details: "`shotdock prefs list` shows the keys and the values they take.", params: [
+            ParamSpec("key", .choice(Preferences.all.map(\.key)), "Preference", required: true, positional: true),
+            ParamSpec("value", .scalar, "New value", required: true, positional: true),
+        ], mcp: "set_preferences"),
+        CommandSpec("shortcuts.list", "List the keyboard shortcuts: global ones and the editor's", mcp: "get_shortcuts", readOnly: true),
+        CommandSpec("shortcuts.set", "Change a keyboard shortcut", details: """
+            Combos as "⇧⌘2" or "shift+cmd+2" (keys by their US-layout position). A combo has one use: giving it to an
+            action takes it away from any other, as in the preferences. Global shortcuts need ⌘, ⌥ or ⌃ (or a function key).
+            """, params: [
+                ParamSpec("action", .choice(ShortcutNames.all), "Action", required: true, positional: true),
+                ParamSpec("combo", .string, "New combo", positional: true),
+                ParamSpec("off", .boolean, "No shortcut"),
+                ParamSpec("default", .boolean, "Back to the default"),
+            ], mcp: "set_shortcut"),
+        CommandSpec("open", "Show the preferences (optionally a tab) or the About window", params: [
+            ParamSpec("window", .choice(["preferences", "about"]), "Window (the history has `history gallery`)", required: true, positional: true),
+            ParamSpec("tab", .choice(["general", "capture", "shortcuts", "history", "upload", "agents", "import"]), "Preferences tab"),
+        ], mcp: "show_window"),
     ]
 }

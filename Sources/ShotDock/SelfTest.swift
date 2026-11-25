@@ -54,6 +54,7 @@ final class SelfTest {
             case "cli-edit": try await cliEdit()
             case "cli-inspect": try await cliInspect()
             case "cli-share": try await cliShare()
+            case "cli-prefs": try await cliPrefs()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -939,9 +940,14 @@ final class SelfTest {
     }
 
     /// Real screenshot of one of our windows (needs Screen Recording).
-    private func snapshot(_ window: NSWindow, to url: URL) async throws {
+    func snapshot(_ window: NSWindow, to url: URL) async throws {
         guard ScreenCapturer.hasPermission else { return render(window.contentView!, to: url) }
-        let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+        // A locked or sleeping screen cannot be captured: draw the view instead.
+        guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true),
+              !content.displays.isEmpty else {
+            note("screen not capturable: \(url.lastPathComponent) drawn from the view")
+            return render(window.contentView!, to: url)
+        }
         guard let scWindow = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
             return fail("window not found for snapshot")
         }
@@ -951,7 +957,7 @@ final class SelfTest {
     }
 
     /// Saves what a view draws, so the UI can be inspected without screen capture.
-    private func render(_ view: NSView, to url: URL) {
+    func render(_ view: NSView, to url: URL) {
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)
         try? rep.representation(using: .png, properties: [:])?.write(to: url)
