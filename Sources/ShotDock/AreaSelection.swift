@@ -17,6 +17,7 @@ final class OverlayPanel: NSPanel {
         becomesKeyOnlyIfNeeded = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         acceptsMouseMovedEvents = true
+        animationBehavior = .none
     }
 
     override var canBecomeKey: Bool { true }
@@ -103,6 +104,8 @@ final class AreaSelectionController {
     var selectionViews: [SelectionView] { panels.compactMap { $0.contentView as? SelectionView } }
 
     func show() {
+        // Paint the frozen screen before the panels appear, so the first frame is never blank.
+        for panel in panels { panel.contentView?.display() }
         for panel in panels { panel.orderFrontRegardless() }
         // Focus the display under the pointer so Esc works right away.
         let mouse = NSEvent.mouseLocation
@@ -168,6 +171,8 @@ final class SelectionView: NSView {
         context.interpolationQuality = .none
         context.drawImageTopLeft(snapshot.image, in: bounds)
 
+        // The screen is shown exactly as it was (no dimming) until a selection
+        // starts, so entering capture mode does not flash.
         context.setFillColor(NSColor.black.withAlphaComponent(0.35).cgColor)
         if controller?.mode == .window {
             drawWindowHighlight(in: context)
@@ -179,9 +184,8 @@ final class SelectionView: NSView {
             context.setLineWidth(1)
             context.stroke(selection.insetBy(dx: -0.5, dy: -0.5))
             drawSizeLabel(for: selection, in: context)
-        } else {
-            context.fill(bounds)
-            if let pointer, controller?.mode == .area { drawCrosshair(at: pointer, in: context) }
+        } else if let pointer, controller?.mode == .area {
+            drawCrosshair(at: pointer, in: context)
         }
         if controller?.mode != .window, let point = current ?? pointer { drawLoupe(at: point, in: context) }
     }
@@ -200,7 +204,7 @@ final class SelectionView: NSView {
     }
 
     private func drawWindowHighlight(in context: CGContext) {
-        guard let window = controller?.hoveredWindow else { return context.fill(bounds) }
+        guard let window = controller?.hoveredWindow else { return }
         let rect = viewRect(fromScreen: window.frame)
         context.addRect(bounds)
         context.addRect(rect)

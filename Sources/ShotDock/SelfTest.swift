@@ -46,6 +46,7 @@ final class SelfTest {
             case "scroll": try await scroll()
             case "dock": try await dock()
             case "magnifier": try await magnifier()
+            case "overlay-fidelity": try await overlayFidelity()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -371,6 +372,49 @@ final class SelfTest {
         if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
         try await Task.sleep(for: .milliseconds(200))
         check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// The frozen screen must look exactly like the real one: compares a
+    /// capture of the screen with a capture of the overlay showing it.
+    private func overlayFidelity() async throws {
+        guard ScreenCapturer.hasPermission, let screen = NSScreen.main else { throw ScreenCaptureError.permissionDenied }
+        note("screen colour space: \(screen.colorSpace?.localizedName ?? "?") / \(String(describing: screen.colorSpace?.cgColorSpace?.name))")
+        let snapshots = try await ScreenCapturer.snapshotAllDisplays()
+        let start = Date()
+        app.coordinator.beginSelection(over: snapshots)
+        guard let view = app.coordinator.selection?.selectionViews.first(where: { $0.snapshot.displayID == screen.displayID }) else {
+            return fail("no overlay")
+        }
+        note("overlay shown in \(Int(Date().timeIntervalSince(start) * 1000)) ms")
+        try await Task.sleep(for: .milliseconds(400))
+        // Capture what is on screen now, overlay included.
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        let display = content.displays.first { $0.displayID == screen.displayID }!
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        let config = SCStreamConfiguration()
+        config.width = view.snapshot.image.width
+        config.height = view.snapshot.image.height
+        config.showsCursor = false
+        config.captureResolution = .best
+        config.colorSpaceName = view.snapshot.image.colorSpace?.name ?? CGColorSpace.sRGB
+        let shown = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        if let view = app.coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
+
+        // Compare a grid of pixels away from the pointer (crosshair and loupe).
+        let original = view.snapshot.image
+        let mouse = NSEvent.mouseLocation
+        let pointer = CGPoint(x: (mouse.x - screen.frame.minX) * view.snapshot.scale, y: (screen.frame.maxY - mouse.y) * view.snapshot.scale)
+        var compared = 0, worst = 0, total = 0
+        for gx in stride(from: 40, to: original.width - 40, by: original.width / 40) {
+            for gy in stride(from: 60, to: original.height - 40, by: original.height / 30) {
+                if abs(CGFloat(gx) - pointer.x) < 420 || abs(CGFloat(gy) - pointer.y) < 420 { continue }
+                guard let a = Measure.color(in: original, at: CGPoint(x: gx, y: gy)), let b = Measure.color(in: shown, at: CGPoint(x: gx, y: gy)) else { continue }
+                let d = Int(max(abs(a.red - b.red), abs(a.green - b.green), abs(a.blue - b.blue)) * 255)
+                worst = max(worst, d); total += d; compared += 1
+            }
+        }
+        note("compared \(compared) pixels: worst difference \(worst), mean \(String(format: "%.2f", Double(total) / Double(max(compared, 1))))")
+        check(compared > 50 && worst <= 3, "frozen screen matches the real one")
     }
 
     /// The magnifier annotation: select a source, the enlargement appears beside it.
