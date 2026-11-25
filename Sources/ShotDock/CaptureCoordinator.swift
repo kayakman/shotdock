@@ -12,13 +12,34 @@ final class CaptureCoordinator {
     private var isCapturing = false
     /// What the next selection is for.
     private var purpose: Purpose = .capture
-    enum Purpose { case capture, recognize }
+    enum Purpose { case capture, recognize, scroll }
     private var settings: AppSettings { .shared }
 
     // MARK: Capture modes
 
     func captureArea() {
         run { try await self.select(mode: .area) }
+    }
+
+    private(set) var scrollSession: ScrollCaptureSession?
+
+    /// Select an area, then scroll: the frames become one tall capture.
+    func captureScrolling() {
+        run { try await self.select(mode: .area, purpose: .scroll) }
+    }
+
+    func startScrolling(_ result: AreaSelectionController.Result, frameSource: ScrollCaptureSession.FrameSource? = nil) {
+        let source = frameSource ?? { try await ScreenCapturer.capture(rect: result.screenRect, displayID: result.displayID) }
+        isCapturing = true
+        let session = ScrollCaptureSession(area: result.screenRect, scale: result.scale, firstFrame: result.image,
+                                           maxHeight: settings.scrollMaxHeight, frameSource: source) { [weak self] image in
+            guard let self else { return }
+            scrollSession = nil
+            isCapturing = false
+            if let image { finish(CaptureDocument(image: image, scale: result.scale)) }
+        }
+        scrollSession = session
+        session.start()
     }
 
     /// Select an area, read its text (or QR code) and copy it.
@@ -96,7 +117,12 @@ final class CaptureCoordinator {
             switch outcome {
             case let .area(result):
                 isCapturing = false
-                if purpose == .recognize { return recognize(result.image) }
+                // self.purpose: the `purpose` parameter shadows it here.
+                if self.purpose == .recognize { return recognize(result.image) }
+                if self.purpose == .scroll {
+                    self.purpose = .capture
+                    return startScrolling(result)
+                }
                 settings.lastArea = result.screenRect
                 finish(CaptureDocument(image: result.image, scale: result.scale))
             case let .window(info):
@@ -109,6 +135,7 @@ final class CaptureCoordinator {
                 copyColor(color)
             case nil:
                 isCapturing = false
+                self.purpose = .capture
             }
         }
         selection = controller

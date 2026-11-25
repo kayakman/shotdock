@@ -43,6 +43,7 @@ final class SelfTest {
             case "pin-ocr": try await pinAndOCR()
             case "backdrop": try await backdrop()
             case "upload": try await upload()
+            case "scroll": try await scroll()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -359,6 +360,61 @@ final class SelfTest {
         check(coordinator.selection == nil, "Esc closes it")
     }
 
+    /// Scrolling capture: synthetic scrolling frames, then the real path over the screen.
+    private func scroll() async throws {
+        let coordinator = app.coordinator
+        AppSettings.shared.openEditorAfterCapture = true
+        AppSettings.shared.copyAfterCapture = false
+
+        // A tall page seen through a 600 × 400 px window that scrolls 90 px per frame.
+        let page = Self.testPattern(width: 600, height: 2000, text: nil)
+        let pageContext = CGContext(data: nil, width: 600, height: 2000, bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        pageContext.draw(page, in: CGRect(x: 0, y: 0, width: 600, height: 2000))
+        pageContext.flipVertically(height: 2000)
+        for y in stride(from: 20, to: 2000, by: 40) {
+            TextLayout(string: "Línea \(y / 40) del documento largo", fontSize: 20, color: CGColor(gray: 0.1, alpha: 1))
+                .draw(at: CGPoint(x: 30, y: CGFloat(y)), in: pageContext)
+        }
+        let tall = pageContext.makeImage()!
+        var offset = 0
+        let source: ScrollCaptureSession.FrameSource = {
+            offset = min(offset + 90, 1600)
+            return tall.cropping(to: CGRect(x: 0, y: offset, width: 600, height: 400))!
+        }
+        let first = tall.cropping(to: CGRect(x: 0, y: 0, width: 600, height: 400))!
+        let screen = NSScreen.main!
+        let area = CGRect(x: screen.frame.midX - 150, y: screen.frame.midY - 100, width: 300, height: 200)
+        coordinator.startScrolling(AreaSelectionController.Result(image: first, scale: 2, screenRect: area, displayID: screen.displayID),
+                                   frameSource: source)
+        guard let session = coordinator.scrollSession else { return fail("no scroll session") }
+        while offset < 1600 { await session.captureFrame() }
+        check(session.state.height == 2000, "stitched the whole page (\(session.state.height) px, \(session.state.frames) frames)")
+        session.finish()
+        try await Task.sleep(for: .milliseconds(300))
+        guard let editor = coordinator.editors.last else { return fail("no editor after scrolling") }
+        let result = editor.model.document.image
+        check(result.width == 600 && result.height == 2000, "editor gets the tall image (\(result.width)x\(result.height))")
+        try ImageEncoding.write(result, to: sibling("scroll"), scale: 2)
+        editor.close()
+
+        // Real path: shortcut → overlay → drag → frames from the screen → Return.
+        guard ScreenCapturer.hasPermission else { return note("skipping the real scroll path: no permission") }
+        coordinator.captureScrolling()
+        try await Task.sleep(for: .seconds(1))
+        guard let view = coordinator.selection?.selectionViews.first(where: { $0.snapshot.displayID == CGMainDisplayID() }),
+              let overlay = view.window else { return fail("no overlay for scrolling") }
+        drag(from: view.convert(CGPoint(x: 300, y: 300), to: nil), to: view.convert(CGPoint(x: 600, y: 500), to: nil), in: overlay)
+        try await Task.sleep(for: .seconds(1))
+        guard let real = coordinator.scrollSession else { return fail("selecting did not start a scroll session") }
+        check(real.state.frames >= 1, "real frames captured (\(real.state.frames), \(real.state.height) px)")
+        real.finish()
+        try await Task.sleep(for: .milliseconds(300))
+        let realImage = coordinator.editors.last?.model.document.image
+        check(realImage.map { $0.width == 600 && $0.height >= 400 } ?? false, "real scrolling capture opens (\(realImage?.width ?? 0)x\(realImage?.height ?? 0))")
+        coordinator.editors.last?.close()
+    }
+
     /// Uploads to scripts/mock-s3.py on port 9555 (start it first).
     private func upload() async throws {
         let settings = AppSettings.shared
@@ -519,6 +575,19 @@ final class SelfTest {
             let copied = NSPasteboard.general.string(forType: .string)
             check(copied == expected, "OCR copies \"\(copied ?? "-")\"")
             check(coordinator.editors.isEmpty, "OCR does not open an editor")
+        }
+
+        // The real shortcut path keeps the OCR purpose through the selection.
+        if ScreenCapturer.hasPermission {
+            var recognised = false
+            coordinator.onRecognized = { _, _ in recognised = true }
+            coordinator.recognizeText()
+            try await Task.sleep(for: .seconds(1))
+            if let view = coordinator.selection?.selectionViews.first(where: { $0.snapshot.displayID == CGMainDisplayID() }), let overlay = view.window {
+                drag(from: view.convert(CGPoint(x: 100, y: 100), to: nil), to: view.convert(CGPoint(x: 500, y: 300), to: nil), in: overlay)
+                try await Task.sleep(for: .seconds(2))
+                check(recognised && coordinator.editors.isEmpty, "OCR shortcut recognises instead of capturing")
+            } else { fail("no overlay for the OCR shortcut") }
         }
 
         // OCR from the editor shows a sheet.

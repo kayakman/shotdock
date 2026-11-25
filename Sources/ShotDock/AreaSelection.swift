@@ -32,6 +32,7 @@ final class AreaSelectionController {
         let scale: CGFloat
         /// Selection in AppKit global coordinates (points).
         let screenRect: CGRect
+        let displayID: CGDirectDisplayID
     }
 
     enum Mode { case area, window, color }
@@ -128,7 +129,7 @@ final class AreaSelectionController {
         let screenRect = CGRect(x: snapshot.frame.minX + viewRect.minX,
                                 y: snapshot.frame.maxY - viewRect.maxY,
                                 width: viewRect.width, height: viewRect.height)
-        completion(.area(Result(image: cropped, scale: snapshot.scale, screenRect: screenRect)))
+        completion(.area(Result(image: cropped, scale: snapshot.scale, screenRect: screenRect, displayID: snapshot.displayID)))
     }
 }
 

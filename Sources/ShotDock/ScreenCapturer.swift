@@ -92,6 +92,27 @@ enum ScreenCapturer {
         return (image, scale)
     }
 
+    /// Captures part of one display, `rect` in AppKit global coordinates.
+    /// ShotDock's own windows (border, controls) are left out.
+    @MainActor
+    static func capture(rect: CGRect, displayID: CGDirectDisplayID) async throws -> CGImage {
+        let content = try await shareableContent()
+        guard let display = content.displays.first(where: { $0.displayID == displayID }),
+              let screen = NSScreen.screens.first(where: { $0.displayID == displayID }) else { throw ScreenCaptureError.noDisplays }
+        let ownApp = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
+        let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
+        let scale = CGFloat(filter.pointPixelScale)
+        let config = SCStreamConfiguration()
+        // sourceRect is in display points with a top-left origin.
+        config.sourceRect = CGRect(x: rect.minX - screen.frame.minX, y: screen.frame.maxY - rect.maxY, width: rect.width, height: rect.height)
+        config.width = Int((rect.width * scale).rounded())
+        config.height = Int((rect.height * scale).rounded())
+        config.showsCursor = false
+        config.captureResolution = .best
+        config.colorSpaceName = CGColorSpace.sRGB
+        return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+    }
+
     @MainActor
     private static func shareableContent() async throws -> SCShareableContent {
         do {
