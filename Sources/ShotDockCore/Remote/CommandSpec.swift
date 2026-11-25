@@ -8,6 +8,8 @@ public struct ParamSpec: Sendable {
         case string
         /// A file path; the CLI makes it absolute from its working directory.
         case path
+        /// A capture of the history (id, last…) or an image file, made absolute like a path.
+        case reference
         case integer
         case number
         case boolean
@@ -50,7 +52,7 @@ public struct ParamSpec: Sendable {
         let number: JSONValue = ["type": "number"]
         switch kind {
         case .string: schema = ["type": "string"]
-        case .path: schema = ["type": "string"]
+        case .path, .reference: schema = ["type": "string"]
         case .integer: schema = ["type": "integer"]
         case .number: schema = ["type": "number"]
         case .boolean: schema = ["type": "boolean"]
@@ -74,7 +76,7 @@ public struct ParamSpec: Sendable {
     func problem(with value: JSONValue) -> String? {
         let ok: Bool
         switch kind {
-        case .string, .path: ok = value.stringValue != nil
+        case .string, .path, .reference: ok = value.stringValue != nil
         case .integer: ok = value.intValue != nil
         case .number: ok = value.doubleValue != nil
         case .boolean: ok = value.boolValue != nil
@@ -96,6 +98,7 @@ public struct ParamSpec: Sendable {
         switch kind {
         case .string: "a string"
         case .path: "a file path"
+        case .reference: "a capture (id, last…) or an image file"
         case .integer: "an integer"
         case .number: "a number"
         case .boolean: "true or false"
@@ -154,6 +157,28 @@ public struct CommandSpec: Sendable {
         self.destructive = destructive
         self.waitsForUser = waitsForUser
         self.transform = transform
+    }
+
+    /// Makes path parameters absolute from `directory`, where the caller runs
+    /// (the app runs elsewhere). References become paths only if the file exists.
+    public func resolvingPaths(_ params: [String: JSONValue], from directory: String) -> [String: JSONValue] {
+        var params = params
+        for param in self.params {
+            guard let text = params[param.name]?.stringValue else { continue }
+            switch param.kind {
+            case .path: params[param.name] = .string(Self.absolute(text, from: directory))
+            case .reference:
+                let path = Self.absolute(text, from: directory)
+                if (text.contains("/") || text.contains(".")), FileManager.default.fileExists(atPath: path) { params[param.name] = .string(path) }
+            default: break
+            }
+        }
+        return params
+    }
+
+    static func absolute(_ text: String, from directory: String) -> String {
+        let expanded = (text as NSString).expandingTildeInPath
+        return expanded.hasPrefix("/") ? expanded : URL(fileURLWithPath: directory).appendingPathComponent(expanded).standardized.path
     }
 
     /// The call may wait for the user (an interactive selection), so it should not time out.

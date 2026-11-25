@@ -12,6 +12,9 @@ public struct CaptureDocument {
     public var crop: CGRect?
     /// Frame for sharing; nil exports the capture alone.
     public var backdrop: Backdrop?
+    /// Export size as a fraction of the drawn size (0.5 halves it); nil keeps it.
+    /// Like the crop, it only applies when exporting.
+    public var resize: CGFloat?
     public var createdAt: Date
 
     /// Number for the next step marker.
@@ -35,6 +38,17 @@ public struct CaptureDocument {
         backdrop?.layout(content: visibleRect, scale: scale) ?? (visibleRect, visibleRect)
     }
 
+    /// Size of the exported image in pixels.
+    public var outputSize: CGSize {
+        let canvas = layout.canvas.size
+        let factor = resize ?? 1
+        return CGSize(width: max(1, (canvas.width * factor).rounded()), height: max(1, (canvas.height * factor).rounded()))
+    }
+
+    /// Pixels per point of the exported image: resizing changes the pixel
+    /// density, not the size it shows at (a halved Retina capture is 1×).
+    public var exportScale: CGFloat { scale * (resize ?? 1) }
+
     /// Draws the document into a top-left-origin context in image pixels.
     public func draw(in context: CGContext, annotationsFilter: (Annotation) -> Bool = { _ in true }) {
         let (canvas, content) = layout
@@ -51,20 +65,34 @@ public struct CaptureDocument {
         context.restoreGState()
     }
 
-    /// The final image: annotations burned in, the crop applied and the backdrop around it.
+    /// The final image: annotations burned in, the crop applied, the backdrop
+    /// around it and resized.
     public func flattened() -> CGImage? {
         let rect = layout.canvas
+        let size = outputSize
         guard rect.width >= 1, rect.height >= 1,
               let context = CGContext(
-                data: nil, width: Int(rect.width), height: Int(rect.height),
+                data: nil, width: Int(size.width), height: Int(size.height),
                 bitsPerComponent: 8, bytesPerRow: 0,
                 space: CGColorSpace(name: CGColorSpace.sRGB)!,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return nil }
-        context.flipVertically(height: rect.height)
+        context.interpolationQuality = .high
+        context.flipVertically(height: size.height)
+        // Drawn scaled rather than scaled afterwards: marks and text stay sharp.
+        context.scaleBy(x: size.width / rect.width, y: size.height / rect.height)
         context.translateBy(x: -rect.minX, y: -rect.minY)
         draw(in: context)
         return context.makeImage()
+    }
+
+    /// The resize factor that gives `width` or `height` pixels (keeping the
+    /// proportions), or nil when neither is given.
+    public func resizeFactor(width: Double?, height: Double?) -> CGFloat? {
+        let canvas = layout.canvas.size
+        if let width, width > 0 { return width / canvas.width }
+        if let height, height > 0 { return height / canvas.height }
+        return nil
     }
 }
 

@@ -76,7 +76,7 @@ public struct CLIParser: Sendable {
         }
         if help { return .help(self.help(for: spec)) }
 
-        var params = try parseParams(Array(args.dropFirst(depth)), for: spec)
+        var params = spec.resolvingPaths(try parseParams(Array(args.dropFirst(depth)), for: spec), from: workingDirectory)
         params = try check(spec.validate(.object(params)), spec)
         var target = spec
         if case let .alias(of: name) = spec.exposure {
@@ -177,10 +177,8 @@ public struct CLIParser: Sendable {
             return parts.map { $0! }
         }
         switch param.kind {
-        case .string, .color, .choice: return .string(text)
-        case .path:
-            let expanded = (text as NSString).expandingTildeInPath
-            return .string(expanded.hasPrefix("/") ? expanded : URL(fileURLWithPath: workingDirectory).appendingPathComponent(expanded).standardized.path)
+        case .string, .color, .choice, .reference: return .string(text)
+        case .path: return .string(CommandSpec.absolute(text, from: workingDirectory))
         case .integer:
             guard let value = Int(text) else { throw bad() }
             return .number(Double(value))
@@ -228,6 +226,7 @@ public struct CLIParser: Sendable {
         switch param.kind {
         case .string: "text"
         case .path: "path"
+        case .reference: "capture"
         case .integer, .number: "n"
         case .boolean: "true|false"
         case .point: "x,y"

@@ -128,7 +128,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     /// ⇧⌘C, as in Shottr: copy the edited image and close the editor.
     @objc func copyAndClose(_ sender: Any?) {
         canvas.commitTextEditing()
-        guard let image = model.flattened(), Pasteboard.copy(image, scale: model.document.scale) else { return }
+        guard let image = model.flattened(), Pasteboard.copy(image, scale: model.document.exportScale) else { return }
         window?.performClose(nil)
         HUD.show("Copiado", symbol: "checkmark.circle.fill")
     }
@@ -138,7 +138,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         canvas.commitTextEditing()
         guard let coordinator, let image = model.flattened() else { return saveDocumentAs(sender) }
         do {
-            let url = try coordinator.save(image, scale: model.document.scale, date: model.document.createdAt)
+            let url = try coordinator.save(image, scale: model.document.exportScale, date: model.document.createdAt)
             if let libraryItemID { LibraryStore.shared.markSaved(libraryItemID, at: url) }
             model.flash("Guardado: \(url.lastPathComponent)")
         } catch {
@@ -159,7 +159,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         panel.beginSheetModal(for: window) { [model] response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                try ImageEncoding.write(image, to: url, format: format, scale: model.document.scale)
+                try ImageEncoding.write(image, to: url, format: format, scale: model.document.exportScale)
                 model.flash("Guardado")
             } catch {
                 NSAlert(error: error).beginSheetModal(for: window)
@@ -175,7 +175,17 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             (NSApp.delegate as? AppDelegate)?.openPreferences(tab: .upload)
             return
         }
-        coordinator?.upload(image, scale: model.document.scale, date: model.document.createdAt, libraryItem: libraryItemID)
+        coordinator?.upload(image, scale: model.document.exportScale, date: model.document.createdAt, libraryItem: libraryItemID)
+    }
+
+    /// Imagen › Redimensionar…
+    @objc func resizeImage(_ sender: Any?) {
+        canvas.commitTextEditing()
+        guard let window else { return }
+        let document = model.document
+        ResizePanel(canvas: document.layout.canvas.size, current: document.outputSize).run(on: window) { [model] factor in
+            model.resize(to: factor)
+        }
     }
 
     /// Shows or hides the backdrop panel; showing it turns the backdrop on.
@@ -215,7 +225,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         canvas.commitTextEditing()
         guard let image = model.flattened(), let window else { return }
         let topLeft = CGPoint(x: window.frame.minX + 20, y: window.frame.maxY - 60)
-        coordinator?.pin(image, scale: model.document.scale, near: topLeft)
+        coordinator?.pin(image, scale: model.document.exportScale, near: topLeft)
         window.performClose(nil)
     }
 

@@ -27,8 +27,11 @@ enum RemoteHistory {
             let id = try store.resolve(params["target"]?.stringValue ?? "")
             let document = try RemoteDocuments.document(id)
             var result = json(try item(id)).objectValue ?? [:]
-            result["annotations"] = .array(document.annotations.map(AnnotationCoding.json))
+            let view = DocumentView(document)
+            result["annotations"] = .array(document.annotations.map { AnnotationCoding.json($0, view: view) })
+            // The crop in pixels of the original capture.
             result["crop"] = document.crop.map(JSONValue.init) ?? .null
+            result["resize"] = document.resize.map { .number($0) } ?? .null
             result["backdrop"] = try document.backdrop.map { try JSONValue(encoding: $0) } ?? .null
             result["original_width"] = .number(Double(document.image.width))
             result["original_height"] = .number(Double(document.image.height))
@@ -43,12 +46,12 @@ enum RemoteHistory {
         "history.copy": { params, _ in
             let id = try store.resolve(params["target"]?.stringValue ?? "")
             let (image, document) = try flattened(id)
-            return ["id": .string(id.uuidString), "copied": .bool(Pasteboard.copy(image, scale: document.scale))]
+            return ["id": .string(id.uuidString), "copied": .bool(Pasteboard.copy(image, scale: document.exportScale))]
         },
         "history.save": { params, _ in
             let id = try store.resolve(params["target"]?.stringValue ?? "")
             let (image, document) = try flattened(id)
-            let url = try coordinator.save(image, scale: document.scale, date: document.createdAt)
+            let url = try coordinator.save(image, scale: document.exportScale, date: document.createdAt)
             store.markSaved(id, at: url)
             return ["id": .string(id.uuidString), "saved_path": .string(url.path)]
         },
@@ -81,15 +84,10 @@ enum RemoteHistory {
         },
         "history.import": { params, _ in
             let path = params["file"]?.stringValue ?? ""
-            guard let data = FileManager.default.contents(atPath: path) else { throw RPCError.notFound("Cannot read \(path)") }
-            guard let image = try? ImageEncoding.image(from: data) else { throw RPCError.invalidParams("\(path) is not an image") }
-            let scale = CGFloat(params["scale"]?.doubleValue ?? Double(ImageEncoding.scale(of: data)))
-            guard scale > 0 else { throw RPCError.invalidParams("scale must be positive") }
-            guard let id = store.add(CaptureDocument(image: image, scale: scale)) else {
-                throw RPCError.notFound("The history is off (Preferencias › Historial)")
-            }
-            return ["id": .string(id.uuidString), "path": .string(path), "width": .number(Double(image.width)),
-                    "height": .number(Double(image.height)), "scale": .number(scale)]
+            let id = try RemoteDocuments.importFile(path, scale: params["scale"]?.doubleValue.map { CGFloat($0) })
+            let document = try RemoteDocuments.document(id)
+            return ["id": .string(id.uuidString), "path": .string(path), "width": .number(Double(document.image.width)),
+                    "height": .number(Double(document.image.height)), "scale": .number(document.scale)]
         },
         "history.gallery": { _, _ in
             (NSApp.delegate as? AppDelegate)?.showGallery()
@@ -126,9 +124,9 @@ enum RemoteHistory {
     /// The edited image written to a file: the path and its size.
     static func rendered(_ document: CaptureDocument, out: String?, format: String?) throws -> JSONValue {
         guard let image = document.flattened() else { throw RPCError.internalError("Cannot draw the capture") }
-        let url = try RemoteFiles.write(image, scale: document.scale, date: document.createdAt, to: out, format: format)
+        let url = try RemoteFiles.write(image, scale: document.exportScale, date: document.createdAt, to: out, format: format)
         return ["path": .string(url.path), "width": .number(Double(image.width)), "height": .number(Double(image.height)),
-                "scale": .number(document.scale)]
+                "scale": .number(document.exportScale)]
     }
 }
 

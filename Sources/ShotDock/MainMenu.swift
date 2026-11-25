@@ -52,6 +52,10 @@ enum MainMenu {
         edit.addItem(item("Seleccionar todo", #selector(NSText.selectAll(_:)), "a"))
         add(edit, to: main)
 
+        let image = NSMenu(title: "Imagen")
+        image.addItem(item("Redimensionar…", #selector(EditorWindowController.resizeImage(_:))))
+        add(image, to: main)
+
         let view = NSMenu(title: "Visualización")
         view.addItem(item("Tamaño real", #selector(EditorWindowController.zoomToActualSize(_:)), "0"))
         view.addItem(item("Ampliar", #selector(EditorWindowController.zoomIn(_:)), "+"))

@@ -3,7 +3,7 @@ import Foundation
 /// The commands, in the order help lists them. Each phase of the CLI adds
 /// its own; the app answers every `.app` command.
 public enum CommandCatalog {
-    public static let all: [CommandSpec] = general + screens + captures + history
+    public static let all: [CommandSpec] = general + screens + captures + history + editing
 
     public static func command(_ name: String) -> CommandSpec? { all.first { $0.name == name } }
 
@@ -149,5 +149,106 @@ public enum CommandCatalog {
             ParamSpec("scale", .number, "Pixels per point (default: from the file's resolution)"),
         ], mcp: "history_import", returnsImage: true),
         CommandSpec("history.gallery", "Show the history window (Capturas recientes)", mcp: "show_gallery"),
+    ]
+
+    // MARK: Editing
+
+    static let editTarget = ParamSpec("target", .reference, "Capture: history id (or its start), last, last-1…, or an image file (added to the history)",
+                                      required: true, positional: true)
+    static let space = ParamSpec("space", .choice(["pixels", "preview"]),
+                                 "Positions are pixels of the edited image, or of the MCP preview (pixels × preview_scale)", default: "pixels")
+    static let style: [ParamSpec] = [
+        ParamSpec("color", .color, "Colour: #RRGGBB or red, orange, yellow, green, blue, purple, black, white"),
+        ParamSpec("weight", .choice(["thin", "medium", "thick"]), "Line weight, as in the editor"),
+        ParamSpec("line_width", .number, "Line width in pixels"),
+        ParamSpec("font_size", .number, "Text size in pixels"),
+    ]
+    static let onText = ParamSpec("on_text", .string, "Put the mark on this text, found by OCR, instead of giving a position")
+
+    static let editResult = """
+        Positions are pixels of the image as edited (crop, backdrop and resize applied), from its top-left \
+        corner: the image at `path`. Returns that image again.
+        """
+
+    /// `shotdock annotate arrow last --from 10,10 --to 200,120`: one mark of `type`.
+    static func mark(_ name: String, type: String, _ summary: String, _ params: [ParamSpec]) -> CommandSpec {
+        CommandSpec("annotate.\(name)", summary, details: editResult, params: [editTarget] + params + style + [onText, space],
+                    exposure: .alias(of: "annotate")) { params in
+            var mark = params
+            mark["target"] = nil
+            mark["space"] = nil
+            mark["type"] = .string(type)
+            return ["target": params["target"] ?? nil, "space": params["space"] ?? nil, "annotations": [.object(mark)]]
+        }
+    }
+
+    static let editing: [CommandSpec] = [
+        CommandSpec("annotate", "Add annotations to a capture; they stay editable in the history and the editor", details: """
+            Each annotation: {"type": "arrow", "from": {"x", "y"}, "to": {…}}, rectangle/oval/highlight/blur/pixelate/erase
+            with "rect", text with "at" and "text", step with "at" (numbered automatically), magnifier with "source"
+            (and "lens" or "zoom"). Optional: color, weight, line_width, font_size, and on_text to place the mark on a
+            text found by OCR. \(editResult)
+            """, params: [
+                editTarget,
+                ParamSpec("annotations", .json(schema: ["type": "array", "items": AnnotationCoding.schema]),
+                          "The annotations (JSON array; on the command line also @file or - for stdin)", required: true),
+                space,
+            ], mcp: "annotate", returnsImage: true),
+        mark("arrow", type: "arrow", "Draw an arrow", [ParamSpec("from", .point, "Tail"), ParamSpec("to", .point, "Head")]),
+        mark("rect", type: "rectangle", "Draw a rectangle", [ParamSpec("rect", .rect, "Rectangle")]),
+        mark("oval", type: "oval", "Draw an oval", [ParamSpec("rect", .rect, "Box of the oval")]),
+        mark("highlight", type: "highlight", "Highlight an area like a marker", [ParamSpec("rect", .rect, "Area")]),
+        mark("text", type: "text", "Write a text", [ParamSpec("at", .point, "Top-left corner of the text"),
+                                                   ParamSpec("text", .string, "The text", required: true)]),
+        mark("step", type: "step", "Add a numbered step", [ParamSpec("at", .point, "Centre"), ParamSpec("number", .integer, "Number (default: the next one)")]),
+        mark("magnifier", type: "magnifier", "Show an area enlarged beside it", [
+            ParamSpec("source", .rect, "Area to enlarge"), ParamSpec("lens", .rect, "Where the enlargement goes (default: beside it)"),
+            ParamSpec("zoom", .number, "Enlargement when no lens is given (default 2)"), ParamSpec("round", .boolean, "Round lens (default true)"),
+        ]),
+        mark("blur", type: "blur", "Blur an area", [ParamSpec("rect", .rect, "Area")]),
+        mark("pixelate", type: "pixelate", "Pixelate an area", [ParamSpec("rect", .rect, "Area")]),
+        mark("erase", type: "erase", "Smart eraser: paint an area with the background around it", [ParamSpec("rect", .rect, "Area")]),
+        CommandSpec("annotations", "List a capture's annotations, with their ids", details: editResult, params: [editTarget],
+                    mcp: "list_annotations", readOnly: true),
+        CommandSpec("annotation.update", "Change an annotation: position, text, colour or size", details: editResult, params: [
+            editTarget,
+            ParamSpec("id", .string, "Annotation id (or its start)", required: true, positional: true),
+            ParamSpec("from", .point, "Arrow tail"), ParamSpec("to", .point, "Arrow head"), ParamSpec("at", .point, "Text corner or step centre"),
+            ParamSpec("rect", .rect, "Box of rectangles, ovals, highlights, blur…"), ParamSpec("source", .rect, "Area a magnifier enlarges"),
+            ParamSpec("lens", .rect, "Where a magnifier's enlargement goes"), ParamSpec("text", .string, "Text"),
+            ParamSpec("number", .integer, "Step number"), ParamSpec("round", .boolean, "Round magnifier"),
+        ] + style + [space], mcp: "update_annotation", returnsImage: true),
+        CommandSpec("annotation.remove", "Remove annotations from a capture", params: [
+            editTarget,
+            ParamSpec("ids", .strings, "Annotation ids (or their start)", positional: true),
+            ParamSpec("all", .boolean, "Remove them all"),
+        ], mcp: "remove_annotations", returnsImage: true, destructive: true),
+        CommandSpec("crop", "Crop a capture; non-destructive (--reset brings the rest back)", details: editResult, params: [
+            editTarget,
+            ParamSpec("rect", .rect, "Area to keep"),
+            ParamSpec("reset", .boolean, "Undo the crop"),
+            space,
+        ], mcp: "crop", returnsImage: true),
+        CommandSpec("resize", "Resize a capture when it is exported; non-destructive (--reset: original size)", params: [
+            editTarget,
+            ParamSpec("width", .integer, "Width in pixels (the height follows)"),
+            ParamSpec("height", .integer, "Height in pixels (the width follows)"),
+            ParamSpec("scale", .number, "Fraction of the size: 0.5 halves it"),
+            ParamSpec("reset", .boolean, "Back to the original size"),
+        ], mcp: "resize", returnsImage: true),
+        CommandSpec("backdrop", "Frame a capture on a background for sharing (Shottr's backdrop)", details: """
+            Presets 1–8: sunset, violet, ocean, mint, sun, graphite, silver, ShotDock orange. Without a fill, the last
+            backdrop used. Padding and radius are in points.
+            """, params: [
+                editTarget,
+                ParamSpec("preset", .integer, "Preset background, 1–8"),
+                ParamSpec("gradient", .string, "Gradient: colour,colour[,angle in degrees]"),
+                ParamSpec("solid", .color, "Plain background colour"),
+                ParamSpec("padding", .number, "Margin around the capture, in points"),
+                ParamSpec("radius", .number, "Corner radius, in points"),
+                ParamSpec("shadow", .number, "Shadow strength, 0–1"),
+                ParamSpec("aspect", .choice(["auto", "1:1", "16:9", "4:3", "4:5"]), "Shape of the canvas"),
+                ParamSpec("off", .boolean, "Remove the backdrop"),
+            ], mcp: "set_backdrop", returnsImage: true),
     ]
 }

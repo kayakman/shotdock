@@ -61,14 +61,14 @@ struct GalleryActions {
 
     func copy(_ id: UUID) {
         guard let document = store.document(id), let image = document.flattened() else { return }
-        Pasteboard.copy(image, scale: document.scale)
+        Pasteboard.copy(image, scale: document.exportScale)
         HUD.show("Copiado", symbol: "checkmark.circle.fill")
     }
 
     func save(_ id: UUID) {
         guard let document = store.document(id), let image = document.flattened() else { return }
         do {
-            let url = try coordinator.save(image, scale: document.scale, date: document.createdAt)
+            let url = try coordinator.save(image, scale: document.exportScale, date: document.createdAt)
             store.markSaved(id, at: url)
             HUD.show("Guardado en \(url.deletingLastPathComponent().lastPathComponent)", symbol: "checkmark.circle.fill")
         } catch {
@@ -79,7 +79,7 @@ struct GalleryActions {
     func upload(_ id: UUID) {
         guard let document = store.document(id), let image = document.flattened() else { return }
         guard Uploader.isConfigured else { return (NSApp.delegate as? AppDelegate)?.openPreferences(tab: .upload) ?? () }
-        coordinator.upload(image, scale: document.scale, date: document.createdAt, libraryItem: id)
+        coordinator.upload(image, scale: document.exportScale, date: document.createdAt, libraryItem: id)
     }
 
     func copyLink(_ item: CaptureItem) {
@@ -91,7 +91,7 @@ struct GalleryActions {
 
     func pin(_ id: UUID) {
         guard let document = store.document(id), let image = document.flattened() else { return }
-        coordinator.pin(image, scale: document.scale)
+        coordinator.pin(image, scale: document.exportScale)
     }
 
     func recognize(_ id: UUID) {

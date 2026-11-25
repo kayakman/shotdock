@@ -7,7 +7,7 @@ public struct CaptureItem: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID
     public var createdAt: Date
     public var scale: CGFloat
-    /// Size of the edited (cropped) image in pixels.
+    /// Size of the exported image (cropped, framed, resized) in pixels.
     public var pixelWidth: Int
     public var pixelHeight: Int
     public var annotationCount: Int
@@ -129,6 +129,7 @@ public final class CaptureLibrary {
             document.annotations = state.annotations
             document.crop = state.crop
             document.backdrop = state.backdrop
+            document.resize = state.resize
         }
         return document
     }
@@ -144,14 +145,16 @@ public final class CaptureLibrary {
         var annotations: [Annotation]
         var crop: CGRect?
         var backdrop: Backdrop?
+        var resize: CGFloat?
     }
 
     private func writeDocumentState(_ document: CaptureDocument, item: inout CaptureItem) throws {
-        let state = DocumentState(annotations: document.annotations, crop: document.crop, backdrop: document.backdrop)
+        let state = DocumentState(annotations: document.annotations, crop: document.crop, backdrop: document.backdrop,
+                                  resize: document.resize)
         try Self.encoder.encode(state).write(to: documentURL(item.id), options: .atomic)
-        let canvas = document.layout.canvas
-        item.pixelWidth = Int(canvas.width)
-        item.pixelHeight = Int(canvas.height)
+        let size = document.outputSize
+        item.pixelWidth = Int(size.width)
+        item.pixelHeight = Int(size.height)
         item.annotationCount = document.annotations.count
         if let flat = document.flattened(), let thumbnail = Self.thumbnail(of: flat) {
             try ImageEncoding.write(thumbnail, to: thumbnailURL(item.id))

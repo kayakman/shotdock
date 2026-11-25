@@ -97,7 +97,7 @@ public final class MCPServer {
         guard let name = params?["name"]?.stringValue else { throw RPCError.invalidParams("tools/call needs a name") }
         guard let spec = tools.first(where: { $0.mcpName == name }) else { throw RPCError.invalidParams("Unknown tool: \(name)") }
         do {
-            let arguments = try resolvingPaths(spec.validate(params?["arguments"]), of: spec)
+            let arguments = spec.resolvingPaths(try spec.validate(params?["arguments"]), from: workingDirectory)
             let result = try call(spec, arguments)
             return toolResult(result, images: spec.returnsImage)
         } catch let error as RPCError {
@@ -108,21 +108,6 @@ public final class MCPServer {
         } catch {
             return ["content": [["type": "text", "text": .string("error: \(error.localizedDescription)")]], "isError": true]
         }
-    }
-
-    /// Relative paths are taken from the directory the client started us in.
-    private func resolvingPaths(_ params: [String: JSONValue], of spec: CommandSpec) -> [String: JSONValue] {
-        var params = params
-        for param in spec.params {
-            guard case .path = param.kind, let text = params[param.name]?.stringValue else { continue }
-            let expanded = (text as NSString).expandingTildeInPath
-            if !expanded.hasPrefix("/") {
-                params[param.name] = .string(URL(fileURLWithPath: workingDirectory).appendingPathComponent(expanded).standardized.path)
-            } else {
-                params[param.name] = .string(expanded)
-            }
-        }
-        return params
     }
 
     /// JSON for the model, plus a preview of every image the result points at.
@@ -198,10 +183,22 @@ public enum ImagePreview {
         return make(image)
     }
 
-    public static func make(_ image: CGImage) -> Preview? {
-        let w = Double(image.width), h = Double(image.height)
+    /// The preview's width and height for an image of `size` pixels.
+    public static func size(for size: CGSize) -> (width: Int, height: Int) {
+        let w = Double(size.width), h = Double(size.height)
         let scale = min(1, maxSide / max(w, h), (maxPixels / (w * h)).squareRoot())
-        let width = max(1, Int((w * scale).rounded())), height = max(1, Int((h * scale).rounded()))
+        return (max(1, Int((w * scale).rounded())), max(1, Int((h * scale).rounded())))
+    }
+
+    /// Preview pixels per image pixel, as `preview_scale` reports it.
+    public static func scale(for size: CGSize) -> Double {
+        Double(self.size(for: size).width) / Double(size.width)
+    }
+
+    public static func make(_ image: CGImage) -> Preview? {
+        let w = Double(image.width)
+        let (width, height) = size(for: CGSize(width: image.width, height: image.height))
+        let scale = Double(width) / w
         var small = image
         if scale < 1 {
             guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,

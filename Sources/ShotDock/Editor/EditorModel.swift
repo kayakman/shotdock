@@ -200,15 +200,30 @@ final class EditorModel {
         var annotations: [Annotation]
         var crop: CGRect?
         var backdrop: Backdrop?
+        var resize: CGFloat?
     }
 
     private var editState: EditState {
-        get { EditState(annotations: document.annotations, crop: document.crop, backdrop: document.backdrop) }
+        get { EditState(annotations: document.annotations, crop: document.crop, backdrop: document.backdrop, resize: document.resize) }
         set {
             document.annotations = newValue.annotations
             document.crop = newValue.crop
             document.backdrop = newValue.backdrop
+            document.resize = newValue.resize
         }
+    }
+
+    /// Export size as a fraction of the drawn size; nil or 1 is the original.
+    func resize(to factor: CGFloat?) {
+        let factor = factor.flatMap { abs($0 - 1) < 0.0001 ? nil : $0 }
+        guard factor != document.resize else { return }
+        perform(factor == nil ? "Tamaño original" : "Redimensionar") { $0.resize = factor }
+    }
+
+    /// A change made from outside the editor (an agent), undoable like the user's own.
+    func applyExternal(_ actionName: String, _ change: (inout CaptureDocument) -> Void) {
+        perform(actionName, change)
+        if let id = selectedID, !document.annotations.contains(where: { $0.id == id }) { selectedID = nil }
     }
 
     private func perform(_ actionName: String, _ change: (inout CaptureDocument) -> Void) {
@@ -272,7 +287,7 @@ final class EditorModel {
     func flattened() -> CGImage? { document.flattened() }
 
     func copyToClipboard() {
-        guard let image = flattened(), Pasteboard.copy(image, scale: document.scale) else { return }
+        guard let image = flattened(), Pasteboard.copy(image, scale: document.exportScale) else { return }
         flash("Copiado")
     }
 

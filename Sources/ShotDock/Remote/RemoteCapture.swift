@@ -258,7 +258,14 @@ enum RemoteFiles {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             prune()
             // No spaces: agents paste these paths into shell commands.
-            url = FilenameTemplate("shotdock-{año}{mes}{día}-{h}{min}{s}").uniqueURL(in: folder, for: date, format: format)
+            let base = FilenameTemplate("shotdock-{año}{mes}{día}-{h}{min}{s}").name(for: date)
+            var candidate = folder.appendingPathComponent(base).appendingPathExtension(format.fileExtension)
+            var counter = 2
+            while FileManager.default.fileExists(atPath: candidate.path) {
+                candidate = folder.appendingPathComponent("\(base)-\(counter)").appendingPathExtension(format.fileExtension)
+                counter += 1
+            }
+            url = candidate
         }
         try ImageEncoding.write(image, to: url, format: format, scale: scale)
         return url

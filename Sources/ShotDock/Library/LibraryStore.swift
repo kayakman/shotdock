@@ -117,7 +117,7 @@ final class LibraryStore {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appendingPathComponent(FilenameTemplate(AppSettings.shared.filenameTemplate).name(for: document.createdAt))
             .appendingPathExtension("png")
-        guard (try? ImageEncoding.write(image, to: url, scale: document.scale)) != nil else { return nil }
+        guard (try? ImageEncoding.write(image, to: url, scale: document.exportScale)) != nil else { return nil }
         return url
     }
 

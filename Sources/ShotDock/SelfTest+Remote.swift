@@ -350,3 +350,91 @@ extension SelfTest {
         check(run.status == 0 && LibraryStore.shared.items.isEmpty, "delete --all empties the history")
     }
 }
+
+extension SelfTest {
+    /// Annotations, crop, resize and backdrop from the CLI, on an imported image.
+    func cliEdit() async throws {
+        AppSettings.shared.agentControlEnabled = true
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        let folder = output.deletingLastPathComponent()
+        let file = folder.appendingPathComponent("selftest-edit.png")
+        try ImageEncoding.write(Self.testPattern(width: 1000, height: 800, text: "Guardar cambios"), to: file, scale: 2)
+        var run = try await shotdock(["history", "import", file.path, "--json"])
+        guard let idText = run.json?["id"]?.stringValue, let id = UUID(uuidString: idText) else { return fail("import failed: \(run.stdout)") }
+        func document() -> CaptureDocument { RemoteDocuments.editor(for: id)?.model.document ?? LibraryStore.shared.document(id)! }
+        func marks() async throws -> [JSONValue] { try await shotdock(["annotations", "last", "--json"]).json?["annotations"]?.arrayValue ?? [] }
+
+        run = try await shotdock(["annotate", "arrow", "last", "--from", "100,100", "--to", "300,200", "--color", "blue", "--json"])
+        check(run.status == 0 && run.json?["annotation_count"] == 1 && run.json?["added"]?.arrayValue?.count == 1, "annotate arrow (\(run.stderr))")
+        check(run.json?["path"]?.stringValue.map { FileManager.default.fileExists(atPath: $0) } == true, "the edited image comes back")
+        let batch = #"[{"type":"rectangle","rect":{"x":400,"y":100,"width":200,"height":120}},{"type":"step","at":{"x":120,"y":400}},{"type":"step","at":{"x":200,"y":400}},{"type":"text","at":{"x":300,"y":380},"text":"Paso a paso"}]"#
+        run = try await shotdock(["annotate", "last", "--annotations", "-", "--json"], stdin: Data(batch.utf8))
+        check(run.status == 0 && run.json?["annotation_count"] == 5, "a batch of annotations from stdin")
+        var list = try await marks()
+        let steps = list.filter { $0["type"] == "step" }.compactMap { $0["number"]?.intValue }
+        check(steps == [1, 2], "steps are numbered in order (\(steps))")
+        check(list.first?["from"]?.point == CGPoint(x: 100, y: 100) && list.first?["color"] == .string(RGBAColor.blue.hexString), "annotations list as given")
+        check(document().annotations.count == 5, "stored in the history as editable annotations")
+
+        // On text, found by OCR.
+        run = try await shotdock(["annotate", "highlight", "last", "--on-text", "cambios", "--json"])
+        list = try await marks()
+        let highlight = list.last { $0["type"] == "highlight" }?["rect"]?.rect ?? .zero
+        check(run.status == 0 && highlight.minY > 640 && highlight.maxY < 740 && highlight.minX > 100, "--on-text places the mark on the text (\(highlight))")
+        run = try await shotdock(["annotate", "rect", "last", "--on-text", "inexistente", "--json"])
+        check(run.status == 1 && run.json?["error"]?["message"]?.stringValue?.contains("Text found") == true, "missing text lists what is there")
+
+        // Change and remove.
+        let arrowID = list.first { $0["type"] == "arrow" }?["id"]?.stringValue ?? ""
+        run = try await shotdock(["annotation", "update", "last", String(arrowID.prefix(8)), "--to", "400,250", "--color", "green", "--weight", "thick", "--json"])
+        check(run.status == 0 && run.json?["annotation"]?["to"]?.point == CGPoint(x: 400, y: 250)
+              && run.json?["annotation"]?["color"] == .string(RGBAColor.green.hexString), "annotation update")
+        let rectID = list.first { $0["type"] == "rectangle" }?["id"]?.stringValue ?? ""
+        run = try await shotdock(["annotation", "remove", "last", rectID, "--json"])
+        check(run.status == 0 && run.json?["annotation_count"] == 5, "annotation remove")
+
+        // Crop: positions follow the edited image.
+        run = try await shotdock(["crop", "last", "--rect", "50,50,600,400", "--json"])
+        check(run.status == 0 && run.json?["width"] == 600 && run.json?["height"] == 400, "crop to 600×400")
+        list = try await marks()
+        check(list.first { $0["type"] == "arrow" }?["from"]?.point == CGPoint(x: 50, y: 50), "positions are relative to the crop")
+        run = try await shotdock(["resize", "last", "--scale", "0.5", "--json"])
+        check(run.status == 0 && run.json?["width"] == 300 && run.json?["scale"]?.doubleValue == 1, "resize to half, 1×")
+        list = try await marks()
+        check(list.first { $0["type"] == "arrow" }?["from"]?.point == CGPoint(x: 25, y: 25), "and to the resize")
+        run = try await shotdock(["resize", "last", "--width", "450", "--json"])
+        check(run.json?["width"] == 450 && run.json?["height"] == 300, "resize by width keeps the proportions")
+        _ = try await shotdock(["resize", "last", "--reset"])
+        run = try await shotdock(["crop", "last", "--reset", "--json"])
+        check(run.json?["width"] == 1000 && document().crop == nil && document().resize == nil, "reset crop and size")
+
+        run = try await shotdock(["backdrop", "last", "--preset", "3", "--padding", "20", "--radius", "12", "--json"])
+        let framedWidth = run.json?["width"]?.intValue
+        check(run.status == 0 && framedWidth == 1080 && document().backdrop?.cornerRadius == 12, "backdrop with 20 pt of margin")
+        run = try await shotdock(["backdrop", "last", "--gradient", "#000000,#FFFFFF,90", "--aspect", "1:1", "--json"])
+        check(run.json?["width"] == run.json?["height"], "square backdrop")
+        run = try await shotdock(["backdrop", "last", "--off", "--json"])
+        check(run.json?["width"] == 1000 && document().backdrop == nil, "backdrop off")
+
+        // With the editor open, changes go through it and can be undone there.
+        _ = try await shotdock(["history", "open", idText])
+        guard let editor = RemoteDocuments.editor(for: id) else { return fail("no editor") }
+        let before = editor.model.document.annotations.count
+        run = try await shotdock(["annotate", "oval", "last", "--rect", "700,300,120,80", "--json"])
+        check(run.status == 0 && editor.model.document.annotations.count == before + 1, "the open editor shows the new annotation")
+        editor.model.undoManager.undo()
+        check(editor.model.document.annotations.count == before, "and can undo it")
+        editor.close()
+        try await Task.sleep(for: .milliseconds(800))
+
+        // Files are imported, and preview coordinates are scaled.
+        let big = folder.appendingPathComponent("selftest-edit-big.png")
+        try ImageEncoding.write(Self.testPattern(width: 3000, height: 1500), to: big, scale: 2)
+        run = try await shotdock(["annotate", "rect", "build/selftest-edit-big.png", "--rect", "100,100,200,100", "--space", "preview", "--json"])
+        let newID = run.json?["id"]?.stringValue.flatMap(UUID.init(uuidString:))
+        let box = newID.flatMap { LibraryStore.shared.document($0)?.annotations.first?.box } ?? .zero
+        let scale = ImagePreview.scale(for: CGSize(width: 3000, height: 1500))
+        check(run.status == 0 && newID != id && abs(box.width - 200 / scale) < 1, "a file becomes a capture; preview positions are scaled (\(box))")
+    }
+}

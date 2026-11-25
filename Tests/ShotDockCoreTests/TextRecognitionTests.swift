@@ -54,3 +54,12 @@ private func textImage(_ lines: [String]) -> CGImage {
     #expect(result.lines == ["Hola desde ShotDock"])
     #expect(result.codes == [payload])
 }
+
+@Test func linesAndFoundWordsHavePixelBoxes() async throws {
+    let result = try await TextRecognition.recognize(textImage(["Capturas de pantalla", "con ShotDock 2026"]), find: "shotdock")
+    let second = try #require(result.textLines.last)
+    // Second line drawn at y = 90 with 40 px text, from x = 30.
+    #expect(second.box.minY > 80 && second.box.maxY < 150 && second.box.minX < 45 && second.confidence > 0.3)
+    let match = try #require(result.matches.first)
+    #expect(match.minX > 80 && match.maxX < second.box.maxX && match.minY >= second.box.minY - 4, "word box inside its line: \(match)")
+}

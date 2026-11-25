@@ -3,10 +3,29 @@ import CoreImage
 import Foundation
 import Vision
 
+/// One line of text and where it is, in image pixels from the top-left.
+public struct RecognizedLine: Equatable, Sendable {
+    public var text: String
+    public var box: CGRect
+    public var confidence: Float
+}
+
+/// A QR code or barcode and where it is.
+public struct RecognizedCode: Equatable, Sendable {
+    public var payload: String
+    /// "QR", "EAN13", "Code128"…
+    public var symbology: String
+    public var box: CGRect
+}
+
 /// What Vision finds in a capture: text lines and QR/barcode payloads.
 public struct RecognitionResult: Equatable, Sendable {
     public var lines: [String]
     public var codes: [String]
+    public var textLines: [RecognizedLine] = []
+    public var barcodes: [RecognizedCode] = []
+    /// Where the searched text appears (`find`), word-precise.
+    public var matches: [CGRect] = []
 
     public init(lines: [String] = [], codes: [String] = []) {
         self.lines = lines
@@ -24,11 +43,11 @@ public struct RecognitionResult: Equatable, Sendable {
 public enum TextRecognition {
     /// Runs OCR (Spanish and English, with automatic language detection) and
     /// barcode detection on the image.
-    public static func recognize(_ image: CGImage, languages: [String] = ["es-ES", "en-US"]) async throws -> RecognitionResult {
+    public static func recognize(_ image: CGImage, languages: [String] = ["es-ES", "en-US"], find: String? = nil) async throws -> RecognitionResult {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
-                    continuation.resume(returning: try recognizeSync(image, languages: languages))
+                    continuation.resume(returning: try recognizeSync(image, languages: languages, find: find))
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -36,7 +55,7 @@ public enum TextRecognition {
         }
     }
 
-    static func recognizeSync(_ image: CGImage, languages: [String]) throws -> RecognitionResult {
+    static func recognizeSync(_ image: CGImage, languages: [String], find: String? = nil) throws -> RecognitionResult {
         let text = makeTextRequest(languages: languages)
         let barcodes = VNDetectBarcodesRequest()
         // Small captures read better scaled up.
@@ -64,7 +83,30 @@ public enum TextRecognition {
         for payload in (barcodes.results ?? []).compactMap(\.payloadStringValue) where !codes.contains(payload) {
             codes.append(payload)
         }
-        return RecognitionResult(lines: lines, codes: codes)
+        var result = RecognitionResult(lines: lines, codes: codes)
+        // Vision's boxes are normalised with the origin at the bottom-left.
+        let w = CGFloat(image.width), h = CGFloat(image.height)
+        func pixels(_ box: CGRect) -> CGRect {
+            CGRect(x: box.minX * w, y: (1 - box.maxY) * h, width: box.width * w, height: box.height * h).integral
+        }
+        for observation in observations {
+            guard let candidate = observation.topCandidates(1).first else { continue }
+            result.textLines.append(RecognizedLine(text: candidate.string, box: pixels(observation.boundingBox), confidence: candidate.confidence))
+            guard let find, !find.isEmpty else { continue }
+            let text = candidate.string
+            var searchRange = text.startIndex..<text.endIndex
+            while let range = text.range(of: find, options: [.caseInsensitive, .diacriticInsensitive], range: searchRange) {
+                let box = (try? candidate.boundingBox(for: range))?.boundingBox ?? observation.boundingBox
+                result.matches.append(pixels(box))
+                searchRange = range.upperBound..<text.endIndex
+            }
+        }
+        for code in barcodes.results ?? [] {
+            guard let payload = code.payloadStringValue else { continue }
+            let symbology = code.symbology.rawValue.replacingOccurrences(of: "VNBarcodeSymbology", with: "")
+            result.barcodes.append(RecognizedCode(payload: payload, symbology: symbology, box: pixels(code.boundingBox)))
+        }
+        return result
     }
 
     static func makeTextRequest(languages: [String]) -> VNRecognizeTextRequest {
