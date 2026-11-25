@@ -493,3 +493,75 @@ extension SelfTest {
         }
     }
 }
+
+extension SelfTest {
+    /// Pins and uploads from the CLI; uploads go to scripts/mock-s3.py, started here.
+    func cliShare() async throws {
+        let settings = AppSettings.shared
+        settings.agentControlEnabled = true
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        let file = output.deletingLastPathComponent().appendingPathComponent("selftest-share.png")
+        try ImageEncoding.write(Self.testPattern(width: 600, height: 400, text: "Fijada"), to: file, scale: 2)
+        var run = try await shotdock(["history", "import", file.path, "--json"])
+        let captureID = run.json?["id"]?.stringValue ?? ""
+
+        // Pins.
+        run = try await shotdock(["pin", "last", "--zoom", "0.5", "--opacity", "0.6", "--at", "100,120", "--json"])
+        let pinID = run.json?["id"]?.stringValue ?? ""
+        check(run.status == 0 && app.coordinator.pins.count == 1 && run.json?["capture"] == .string(captureID), "pin a capture")
+        let frame = run.json?["frame"]?.rect ?? .zero
+        check(abs(frame.width - 150) < 1 && abs(frame.minX - 100) < 1 && abs(frame.minY - 120) < 1, "at its zoom and place (\(frame))")
+        check(run.json?["opacity"] == 0.6, "with its opacity")
+        run = try await shotdock(["pins", "--json"])
+        check(run.json?["pins"]?.arrayValue?.count == 1, "pins lists it")
+        run = try await shotdock(["pin", "update", String(pinID.prefix(6)), "--click-through", "--zoom", "1", "--json"])
+        check(run.status == 0 && app.coordinator.pins.first?.clickThrough == true && run.json?["zoom"] == 1, "pin update: clicks go through, zoom 100 %")
+        run = try await shotdock(["pin", "close", "--all", "--json"])
+        try await Task.sleep(for: .milliseconds(200))
+        check(run.json?["closed"] == 1 && app.coordinator.pins.isEmpty, "pin close --all")
+
+        // Uploads against the mock S3 server.
+        run = try await shotdock(["upload", "last", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "not_configured", "upload without settings says so")
+        let repo = output.deletingLastPathComponent().deletingLastPathComponent()
+        let server = Process()
+        server.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        server.arguments = ["-I", repo.appendingPathComponent("scripts/mock-s3.py").path, "--port", "9556"]
+        server.standardOutput = FileHandle.nullDevice
+        server.standardError = FileHandle.nullDevice
+        try server.run()
+        defer { server.terminate() }
+        try await Task.sleep(for: .milliseconds(800))
+        var config = S3Configuration()
+        config.provider = .minio
+        config.endpoint = "http://127.0.0.1:9556"
+        config.region = "eu-west-1"
+        config.bucket = "capturas"
+        config.pathStyle = true
+        config.linkMode = .presigned
+        settings.s3 = config
+        defer { Keychain.saveS3Credentials(nil) }
+        // The secret is read from stdin when it is not an argument.
+        run = try await shotdock(["s3", "credentials", "--access-key-id", "test", "--json"], stdin: Data("testsecret\n".utf8))
+        check(run.status == 0 && Keychain.loadS3Credentials()?.secretAccessKey == "testsecret", "s3 credentials reads the secret from stdin")
+        run = try await shotdock(["upload", "test", "--json"])
+        check(run.status == 0 && run.json?["ok"] == true, "upload test")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("sin tocar", forType: .string)
+        run = try await shotdock(["upload", "last", "--json"])
+        let link = run.json?["url"]?.stringValue ?? ""
+        check(run.status == 0 && link.contains("/capturas/") && link.contains("X-Amz-Signature="), "upload returns the link")
+        check(NSPasteboard.general.string(forType: .string) == "sin tocar", "without --copy the clipboard is untouched")
+        if let url = URL(string: link) {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            check((try? ImageEncoding.image(from: data))?.width == 600, "the link downloads the capture")
+        }
+        check(LibraryStore.shared.items.first?.uploadedURL == link, "the history remembers the link")
+        run = try await shotdock(["history", "list", "--uploaded", "--json"])
+        check(run.json?["total"] == 1, "history list --uploaded")
+
+        // MCP has no tool for the keys.
+        check(CommandCatalog.tools.allSatisfy { $0.name != "s3.credentials" }, "S3 keys are not an MCP tool")
+    }
+}

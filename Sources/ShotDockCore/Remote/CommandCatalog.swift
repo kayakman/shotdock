@@ -3,7 +3,7 @@ import Foundation
 /// The commands, in the order help lists them. Each phase of the CLI adds
 /// its own; the app answers every `.app` command.
 public enum CommandCatalog {
-    public static let all: [CommandSpec] = general + screens + captures + history + editing + inspection
+    public static let all: [CommandSpec] = general + screens + captures + history + editing + inspection + sharing
 
     public static func command(_ name: String) -> CommandSpec? { all.first { $0.name == name } }
 
@@ -284,5 +284,42 @@ public enum CommandCatalog {
                 ParamSpec("join", .boolean, "Join the lines into one paragraph (default: as in the preferences)"),
                 ParamSpec("copy", .boolean, "Copy the text (or the QR content) to the clipboard"),
             ], mcp: "recognize_text", readOnly: true),
+    ]
+
+    // MARK: Pins and uploads
+
+    static let pinOptions: [ParamSpec] = [
+        ParamSpec("zoom", .number, "Zoom: 1 is the capture's size, 0.5 half"),
+        ParamSpec("opacity", .number, "Opacity, 0.15–1"),
+        ParamSpec("click_through", .boolean, "Let clicks go through to what is below"),
+        ParamSpec("at", .point, "Top-left corner, in screen points"),
+    ]
+
+    static let sharing: [CommandSpec] = [
+        CommandSpec("pin", "Pin a capture above every window", params: [editTarget] + pinOptions, mcp: "pin"),
+        CommandSpec("pins", "List the pinned captures", mcp: "list_pins", readOnly: true),
+        CommandSpec("pin.update", "Change a pinned capture: zoom, opacity, clicks, position", params: [
+            ParamSpec("id", .string, "Pin id (or its start)", required: true, positional: true),
+        ] + pinOptions, mcp: "update_pin"),
+        CommandSpec("pin.close", "Close pinned captures", params: [
+            ParamSpec("ids", .strings, "Pin ids (or their start)", positional: true),
+            ParamSpec("all", .boolean, "Close them all"),
+        ], mcp: "close_pins"),
+        CommandSpec("upload", "Upload a capture, as edited, to S3 and return the link", details: """
+            Uses the bucket set in Preferencias › Subida (or `shotdock prefs set s3.…`). The link is public or
+            presigned, as configured.
+            """, params: [
+                editTarget,
+                ParamSpec("copy", .boolean, "Copy the link to the clipboard"),
+            ], mcp: "upload"),
+        CommandSpec("upload.test", "Check the S3 settings by uploading and deleting a tiny file", mcp: "upload_test"),
+        CommandSpec("s3.credentials", "Set the S3 access keys (kept in the keychain)", details: """
+            Without --secret-access-key the secret is asked for on the terminal, without echo. Not an MCP tool:
+            secrets should not pass through a model.
+            """, params: [
+                ParamSpec("access_key_id", .string, "Access key id"),
+                ParamSpec("secret_access_key", .string, "Secret access key (better typed when asked)"),
+                ParamSpec("clear", .boolean, "Remove the keys"),
+            ], tool: false),
     ]
 }

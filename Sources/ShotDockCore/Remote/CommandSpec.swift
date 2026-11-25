@@ -144,14 +144,15 @@ public struct CommandSpec: Sendable {
     public var transform: (@Sendable ([String: JSONValue]) throws -> JSONValue)?
 
     public init(_ name: String, _ summary: String, details: String = "", params: [ParamSpec] = [], exposure: Exposure = .app,
-                mcp: String? = nil, returnsImage: Bool = false, readOnly: Bool = false, destructive: Bool = false,
+                mcp: String? = nil, tool: Bool = true, returnsImage: Bool = false, readOnly: Bool = false, destructive: Bool = false,
                 waitsForUser: Bool = false, transform: (@Sendable ([String: JSONValue]) throws -> JSONValue)? = nil) {
         self.name = name
         self.summary = summary
         self.details = details
         self.params = params
         self.exposure = exposure
-        mcpName = exposure == .app ? (mcp ?? name.replacingOccurrences(of: ".", with: "_")) : nil
+        // `tool: false` keeps an app command off MCP (secrets must not pass through a model).
+        mcpName = exposure == .app && tool ? (mcp ?? name.replacingOccurrences(of: ".", with: "_")) : nil
         self.returnsImage = returnsImage
         self.readOnly = readOnly
         self.destructive = destructive

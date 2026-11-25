@@ -53,6 +53,7 @@ final class SelfTest {
             case "cli-history": try await cliHistory()
             case "cli-edit": try await cliEdit()
             case "cli-inspect": try await cliInspect()
+            case "cli-share": try await cliShare()
             default: fail("unknown selftest \(name)")
             }
         } catch {

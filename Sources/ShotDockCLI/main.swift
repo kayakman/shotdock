@@ -48,6 +48,16 @@ func run(_ arguments: [String]) -> Int32 {
         return ExitCode.ok
     case let .run(invocation):
         if invocation.command.exposure == .local { return runLocal(invocation) }
+        var invocation = invocation
+        if invocation.command.name == "s3.credentials", invocation.params["clear"]?.boolValue != true {
+            // Asked for on the terminal so the secret stays out of the shell history.
+            if invocation.params["access_key_id"] == nil, let id = prompt("Access key id: ", secret: false) {
+                invocation.params["access_key_id"] = .string(id)
+            }
+            if invocation.params["secret_access_key"] == nil, let secret = prompt("Secret access key: ", secret: true) {
+                invocation.params["secret_access_key"] = .string(secret)
+            }
+        }
         let client: ControlClient
         do {
             client = try AppConnection.connect()
@@ -70,6 +80,18 @@ func run(_ arguments: [String]) -> Int32 {
             return ExitCode.unavailable
         }
     }
+}
+
+/// Reads a line from the terminal (without echo for secrets), or from stdin when piped.
+func prompt(_ label: String, secret: Bool) -> String? {
+    if isatty(STDIN_FILENO) == 0 { return readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) }
+    if secret {
+        var buffer = [CChar](repeating: 0, count: 512)
+        guard let line = readpassphrase(label, &buffer, buffer.count, 0) else { return nil }
+        return String(cString: line)
+    }
+    FileHandle.standardError.write(Data(label.utf8))
+    return readLine()?.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 /// Commands the binary answers itself.

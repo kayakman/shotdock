@@ -7,6 +7,10 @@ import ShotDockCore
 final class PinWindowController: NSWindowController, NSWindowDelegate {
     let image: CGImage
     let scale: CGFloat
+    /// How agents name it (`shotdock pins`).
+    let id = UUID()
+    /// The capture it shows, if it came from the history.
+    var libraryItemID: UUID?
     private let pinView: PinView
     var onClose: ((PinWindowController) -> Void)?
 
@@ -55,6 +59,12 @@ final class PinWindowController: NSWindowController, NSWindowDelegate {
         origin.x = min(max(origin.x, visible.minX), visible.maxX - shown.width)
         origin.y = min(max(origin.y, visible.minY), visible.maxY - shown.height)
         window.setFrame(CGRect(origin: origin, size: shown), display: true)
+    }
+
+    /// Moves the window so its top-left corner is at `point` (AppKit coordinates).
+    func move(topLeft point: CGPoint) {
+        guard let window else { return }
+        window.setFrameTopLeftPoint(point)
     }
 
     func show() {

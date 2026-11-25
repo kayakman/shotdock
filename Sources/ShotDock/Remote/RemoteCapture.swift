@@ -220,8 +220,9 @@ enum RemoteCapture {
             }
         }
         if flag("pin") {
-            coordinator.pin(document.image, scale: document.scale)
-            result["pinned"] = true
+            let pin = coordinator.pin(document.image, scale: document.scale)
+            pin.libraryItemID = itemID
+            result["pin"] = .string(pin.id.uuidString)
         }
         if flag("edit") {
             coordinator.openEditor(with: document, libraryItem: itemID)
