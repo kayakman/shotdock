@@ -185,16 +185,23 @@ enum RemoteCapture {
 
     /// Stores the capture and does what was asked with it.
     static func deliver(_ captured: Captured, _ params: [String: JSONValue]) async throws -> JSONValue {
-        let document = captured.document
+        var document = captured.document
         let flag = { (name: String) in params[name]?.boolValue == true }
         var result: [String: JSONValue] = [
             "width": .number(Double(document.image.width)),
             "height": .number(Double(document.image.height)),
             "scale": .number(document.scale),
         ]
+        if flag("redact") {
+            // Covered before anything leaves the app; the boxes stay editable in the history.
+            let (boxes, findings) = try await Redaction.annotations(for: document)
+            document.annotations += boxes
+            result["redacted"] = RemoteEditing.findingsJSON(findings)
+        }
+        let image = document.annotations.isEmpty ? document.image : document.flattened() ?? document.image
         let itemID = params["history"]?.boolValue == false ? nil : LibraryStore.shared.add(document)
         result["id"] = itemID.map { .string($0.uuidString) } ?? .null
-        let file = try RemoteFiles.write(document.image, scale: document.scale, date: document.createdAt,
+        let file = try RemoteFiles.write(image, scale: document.scale, date: document.createdAt,
                                          to: params["out"]?.stringValue, format: params["format"]?.stringValue)
         result["path"] = .string(file.path)
         if let rect = captured.rect {
@@ -203,15 +210,15 @@ enum RemoteCapture {
         }
         if let window = captured.window { result["window"] = window }
 
-        if flag("copy") { result["copied"] = .bool(Pasteboard.copy(document.image, scale: document.scale)) }
+        if flag("copy") { result["copied"] = .bool(Pasteboard.copy(image, scale: document.scale)) }
         if flag("save") {
-            let url = try coordinator.save(document.image, scale: document.scale, date: document.createdAt)
+            let url = try coordinator.save(image, scale: document.scale, date: document.createdAt)
             if let itemID { LibraryStore.shared.markSaved(itemID, at: url) }
             result["saved_path"] = .string(url.path)
         }
         if flag("upload") {
             do {
-                let link = try await Uploader.upload(document.image, scale: document.scale, date: document.createdAt, libraryItem: itemID,
+                let link = try await Uploader.upload(image, scale: document.scale, date: document.createdAt, libraryItem: itemID,
                                                      copyLink: false, quiet: true)
                 result["url"] = .string(link.absoluteString)
             } catch {
@@ -220,7 +227,7 @@ enum RemoteCapture {
             }
         }
         if flag("pin") {
-            let pin = coordinator.pin(document.image, scale: document.scale)
+            let pin = coordinator.pin(image, scale: document.scale)
             pin.libraryItemID = itemID
             result["pin"] = .string(pin.id.uuidString)
         }

@@ -58,6 +58,21 @@ enum RemoteEditing {
             return try RemoteDocuments.result(id, edited)
         },
         "backdrop": { params, _ in try backdrop(params) },
+        "redact": { params, _ in
+            let id = try RemoteDocuments.resolve(params["target"])
+            let document = try RemoteDocuments.document(id)
+            let kinds = Set(params["kinds"]?.arrayValue?.compactMap(\.stringValue) ?? [])
+            if let unknown = kinds.first(where: { !SecretScanner.kinds.contains($0) }) {
+                throw RPCError.invalidParams("Unknown kind \(unknown); use \(SecretScanner.kinds.joined(separator: ", "))")
+            }
+            let (boxes, findings) = try await Redaction.annotations(for: document, kinds: kinds)
+            let report = findingsJSON(findings)
+            if params["dry_run"]?.boolValue == true || boxes.isEmpty {
+                return try RemoteDocuments.result(id, document, extra: ["found": report, "covered": .number(0)])
+            }
+            let edited = try RemoteDocuments.edit(id, "Ocultar secretos") { $0.annotations += boxes }
+            return try RemoteDocuments.result(id, edited, extra: ["found": report, "covered": .number(Double(boxes.count))])
+        },
     ]
 
     // MARK: Annotations
@@ -135,6 +150,11 @@ enum RemoteEditing {
             document.annotations[index] = changed
         }
         return try RemoteDocuments.result(id, edited, extra: ["annotation": AnnotationCoding.json(changed, view: DocumentView(edited))])
+    }
+
+    /// What was found, masked: enough to know what it was, never the secret.
+    static func findingsJSON(_ findings: [RecognizedSecret]) -> JSONValue {
+        .array(findings.map { ["kind": .string($0.kind), "masked": .string($0.masked), "box": JSONValue($0.box)] })
     }
 
     // MARK: Backdrop

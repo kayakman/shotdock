@@ -67,6 +67,7 @@ public enum CommandCatalog {
         ParamSpec("edit", .boolean, "Open it in the editor"),
         ParamSpec("pin", .boolean, "Pin it above every window"),
         ParamSpec("history", .boolean, "Keep it in the history (needed to edit it later)", default: true),
+        ParamSpec("redact", .boolean, "Cover secrets (keys, tokens, passwords, e-mails, cards) with black boxes before returning the image"),
     ]
 
     static let captureResult = """
@@ -236,6 +237,14 @@ public enum CommandCatalog {
             ParamSpec("scale", .number, "Fraction of the size: 0.5 halves it"),
             ParamSpec("reset", .boolean, "Back to the original size"),
         ], mcp: "resize", returnsImage: true),
+        CommandSpec("redact", "Cover secrets with black boxes: API keys, tokens, passwords, e-mails, cards, IBANs", details: """
+            Found by OCR on the image as edited; the boxes stay editable like any annotation. Findings come back
+            masked (ghp_…(40)), never the secret itself. \(editResult)
+            """, params: [
+                editTarget,
+                ParamSpec("kinds", .strings, "Only these kinds: \(SecretScanner.kinds.joined(separator: ", "))"),
+                ParamSpec("dry_run", .boolean, "Only report what would be covered"),
+            ], mcp: "redact", returnsImage: true),
         CommandSpec("backdrop", "Frame a capture on a background for sharing (Shottr's backdrop)", details: """
             Presets 1–8: sunset, violet, ocean, mint, sun, graphite, silver, ShotDock orange. Without a fill, the last
             backdrop used. Padding and radius are in points.

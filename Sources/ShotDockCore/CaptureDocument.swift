@@ -4,7 +4,7 @@ import Foundation
 /// A capture being edited: the untouched pixels plus everything drawn on top.
 /// Cropping is non-destructive so it can be undone and annotations keep their
 /// coordinates.
-public struct CaptureDocument {
+public struct CaptureDocument: Sendable {
     public var image: CGImage
     /// Pixels per point of the display it came from (2 on Retina).
     public var scale: CGFloat

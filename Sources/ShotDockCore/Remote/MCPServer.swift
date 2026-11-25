@@ -19,6 +19,8 @@ public final class MCPServer {
         image from its top-left corner: divide what you read on the preview by preview_scale. \
         Screen rectangles (capture_area, list_windows, list_displays) are points from the top-left of the \
         main display. Captures are silent unless copy, save, upload, edit or pin are set. \
+        When the screen may show secrets (keys, tokens, passwords, e-mails), capture with redact: true so \
+        they are covered before the image reaches you. \
         If a tool fails with not_authorized, ask the user to turn on agent control in \
         ShotDock › Preferencias › Agentes and to allow this client.
         """

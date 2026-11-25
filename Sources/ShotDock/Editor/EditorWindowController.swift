@@ -188,6 +188,25 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
+    /// Imagen › Ocultar secretos: black boxes over keys, tokens, passwords,
+    /// e-mails, cards and IBANs found by OCR. Undoable, and the boxes can be
+    /// moved, resized or deleted like any mark.
+    @objc func redactSecrets(_ sender: Any?) {
+        canvas.commitTextEditing()
+        let document = model.document
+        model.flash("Buscando secretos…")
+        Task { [model] in
+            do {
+                let (boxes, _) = try await Redaction.annotations(for: document)
+                guard !boxes.isEmpty else { return model.flash("No se han encontrado secretos") }
+                model.applyExternal("Ocultar secretos") { $0.annotations += boxes }
+                model.flash(boxes.count == 1 ? "1 secreto oculto" : "\(boxes.count) secretos ocultos")
+            } catch {
+                model.flash("No se pudo leer el texto")
+            }
+        }
+    }
+
     /// Shows or hides the backdrop panel; showing it turns the backdrop on.
     @objc func toggleBackdropPanel(_ sender: Any?) {
         guard let inspector else { return }

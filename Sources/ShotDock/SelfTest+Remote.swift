@@ -626,3 +626,50 @@ extension SelfTest {
         window?.close()
     }
 }
+
+extension SelfTest {
+    /// Secret redaction from the CLI and from the editor.
+    func cliRedact() async throws {
+        AppSettings.shared.agentControlEnabled = true
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        func secretsImage() -> CGImage {
+            let context = CGContext(data: nil, width: 1200, height: 400, bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.flipVertically(height: 400)
+            context.setFillColor(gray: 1, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: 1200, height: 400))
+            for (i, line) in ["Clave de AWS AKIAIOSFODNN7EXAMPLE", "Correo ricardo@example.com", "Hola, esto no es secreto"].enumerated() {
+                TextLayout(string: line, fontSize: 40, color: CGColor(gray: 0, alpha: 1)).draw(at: CGPoint(x: 40, y: 40 + i * 110), in: context)
+            }
+            return context.makeImage()!
+        }
+        let file = output.deletingLastPathComponent().appendingPathComponent("selftest-secrets.png")
+        try ImageEncoding.write(secretsImage(), to: file, scale: 2)
+
+        var run = try await shotdock(["redact", file.path, "--dry-run", "--json"])
+        let found = run.json?["found"]?.arrayValue ?? []
+        check(run.status == 0 && Set(found.compactMap { $0["kind"]?.stringValue }) == ["api_key", "email"] && run.json?["covered"] == 0,
+              "dry run reports the secrets (\(found.compactMap { $0["masked"]?.stringValue }))")
+        check(!run.stdout.contains("AKIAIOSFODNN7EXAMPLE") && !run.stdout.contains("ricardo@example.com"), "findings are masked, never the secret")
+        run = try await shotdock(["redact", "last", "--kinds", "email", "--json"])
+        check(run.json?["covered"] == 1, "--kinds email covers only the e-mail")
+        run = try await shotdock(["redact", "last", "--json"])
+        check(run.status == 0 && (run.json?["covered"]?.intValue ?? 0) >= 1, "redact covers the key")
+        if let path = run.json?["path"]?.stringValue, let data = FileManager.default.contents(atPath: path) {
+            let text = try await TextRecognition.recognize(try ImageEncoding.image(from: data)).text()
+            check(!text.contains("AKIA") && !text.contains("@example") && text.contains("Hola"), "the exported image no longer shows them (\(text.replacingOccurrences(of: "\n", with: " | ")))")
+        }
+        run = try await shotdock(["annotations", "last", "--json"])
+        check(run.json?["annotations"]?.arrayValue?.allSatisfy { $0["type"] == "redact" && $0["color"] == "#000000" } == true, "as editable black boxes")
+
+        // The editor's Imagen › Ocultar secretos.
+        let editor = app.coordinator.openEditor(with: CaptureDocument(image: secretsImage(), scale: 2))
+        editor.redactSecrets(nil)
+        try await waitFor(seconds: 20) { editor.model.document.annotations.count >= 2 }
+        check(editor.model.document.annotations.count == 2 && editor.model.document.annotations.allSatisfy(\.isPixelEffect), "the editor covers them too")
+        editor.model.undoManager.undo()
+        check(editor.model.document.annotations.isEmpty, "in one undoable step")
+        editor.close()
+    }
+}

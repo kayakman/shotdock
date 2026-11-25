@@ -5,7 +5,7 @@ public enum AnnotationRenderer {
     /// Draws annotations into a context whose user space is image pixels with
     /// a top-left origin (a flipped view, or a bitmap after `flipVertically`).
     /// `source` is the capture, needed by blur, pixelate and the eraser.
-    /// Pixel effects (blur, pixelate, eraser) belong to the picture, so they
+    /// Pixel effects (blur, pixelate, eraser, redaction) belong to the picture, so they
     /// go under every vector mark regardless of the order they were added.
     public static func draw(_ annotations: [Annotation], in context: CGContext, source: CGImage?) {
         let effects = annotations.filter(\.isPixelEffect)
@@ -48,6 +48,9 @@ public enum AnnotationRenderer {
             drawEffect(.pixelate, rect, strength: max(style.lineWidth * 2.5, 8), source: source, in: context)
         case let .erase(rect):
             drawEffect(.erase, rect, strength: 0, source: source, in: context)
+        case let .redact(rect):
+            context.setFillColor(style.color.withAlpha(1).cgColor)
+            context.fill(rect.pixelAligned)
         case let .magnifier(sourceRect, target, round):
             drawMagnifier(sourceRect, target, round: round, style: style, image: source, effects: effects, in: context)
         }

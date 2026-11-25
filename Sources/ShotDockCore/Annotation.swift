@@ -31,6 +31,8 @@ public enum AnnotationShape: Codable, Equatable, Sendable {
     case pixelate(CGRect)
     /// Paints the area with the background around it (smart eraser).
     case erase(CGRect)
+    /// Covers the area with an opaque box (secrets: unlike blur, nothing shows through).
+    case redact(CGRect)
     /// Shows `source` enlarged inside `target` (same aspect ratio), joined
     /// to it by a line; `round` draws the enlargement as a circle/ellipse.
     case magnifier(source: CGRect, target: CGRect, round: Bool)
@@ -52,7 +54,7 @@ public struct Annotation: Identifiable, Codable, Equatable, Sendable {
     /// The rectangle of box-like shapes.
     public var box: CGRect? {
         switch shape {
-        case let .rectangle(r), let .ellipse(r), let .highlight(r), let .blur(r), let .pixelate(r), let .erase(r): r
+        case let .rectangle(r), let .ellipse(r), let .highlight(r), let .blur(r), let .pixelate(r), let .erase(r), let .redact(r): r
         case .arrow, .text, .step, .magnifier: nil
         }
     }
@@ -66,6 +68,7 @@ public struct Annotation: Identifiable, Codable, Equatable, Sendable {
         case .blur: copy.shape = .blur(rect)
         case .pixelate: copy.shape = .pixelate(rect)
         case .erase: copy.shape = .erase(rect)
+        case .redact: copy.shape = .redact(rect)
         case .arrow, .text, .step, .magnifier: break
         }
         return copy
@@ -78,7 +81,7 @@ public struct Annotation: Identifiable, Codable, Equatable, Sendable {
             return CGRect(corner: from, corner: to).insetBy(dx: -style.arrowHeadLength, dy: -style.arrowHeadLength)
         case let .rectangle(rect), let .ellipse(rect):
             return rect.insetBy(dx: -style.lineWidth / 2, dy: -style.lineWidth / 2)
-        case let .highlight(rect), let .blur(rect), let .pixelate(rect), let .erase(rect):
+        case let .highlight(rect), let .blur(rect), let .pixelate(rect), let .erase(rect), let .redact(rect):
             return rect
         case let .text(origin, string):
             return CGRect(origin: origin, size: TextLayout(string: string, fontSize: style.fontSize).size)
@@ -106,7 +109,7 @@ public struct Annotation: Identifiable, Codable, Equatable, Sendable {
             let dx = (point.x - rect.midX) / a, dy = (point.y - rect.midY) / b
             let r = (dx * dx + dy * dy).squareRoot()
             return abs(r - 1) * min(a, b) <= slack
-        case .highlight, .blur, .pixelate, .erase, .text:
+        case .highlight, .blur, .pixelate, .erase, .redact, .text:
             return bounds.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
         case let .step(center, _):
             return point.distance(to: center) <= style.stepRadius + tolerance
@@ -226,7 +229,7 @@ public struct Annotation: Identifiable, Codable, Equatable, Sendable {
 
     public var isPixelEffect: Bool {
         switch shape {
-        case .blur, .pixelate, .erase: true
+        case .blur, .pixelate, .erase, .redact: true
         default: false
         }
     }

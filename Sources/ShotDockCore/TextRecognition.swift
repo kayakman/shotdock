@@ -18,6 +18,13 @@ public struct RecognizedCode: Equatable, Sendable {
     public var box: CGRect
 }
 
+/// A secret found in the text, masked, and where it is.
+public struct RecognizedSecret: Equatable, Sendable {
+    public var kind: String
+    public var masked: String
+    public var box: CGRect
+}
+
 /// What Vision finds in a capture: text lines and QR/barcode payloads.
 public struct RecognitionResult: Equatable, Sendable {
     public var lines: [String]
@@ -26,6 +33,8 @@ public struct RecognitionResult: Equatable, Sendable {
     public var barcodes: [RecognizedCode] = []
     /// Where the searched text appears (`find`), word-precise.
     public var matches: [CGRect] = []
+    /// Secrets in the text (`secrets`), with their boxes.
+    public var secrets: [RecognizedSecret] = []
 
     public init(lines: [String] = [], codes: [String] = []) {
         self.lines = lines
@@ -43,11 +52,13 @@ public struct RecognitionResult: Equatable, Sendable {
 public enum TextRecognition {
     /// Runs OCR (Spanish and English, with automatic language detection) and
     /// barcode detection on the image.
-    public static func recognize(_ image: CGImage, languages: [String] = ["es-ES", "en-US"], find: String? = nil) async throws -> RecognitionResult {
+    /// `find` locates a text; `secrets` looks for secrets of those kinds (empty: all).
+    public static func recognize(_ image: CGImage, languages: [String] = ["es-ES", "en-US"], find: String? = nil,
+                                 secrets: Set<String>? = nil) async throws -> RecognitionResult {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
-                    continuation.resume(returning: try recognizeSync(image, languages: languages, find: find))
+                    continuation.resume(returning: try recognizeSync(image, languages: languages, find: find, secrets: secrets))
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -55,7 +66,7 @@ public enum TextRecognition {
         }
     }
 
-    static func recognizeSync(_ image: CGImage, languages: [String], find: String? = nil) throws -> RecognitionResult {
+    static func recognizeSync(_ image: CGImage, languages: [String], find: String? = nil, secrets: Set<String>? = nil) throws -> RecognitionResult {
         let text = makeTextRequest(languages: languages)
         let barcodes = VNDetectBarcodesRequest()
         // Small captures read better scaled up.
@@ -92,6 +103,12 @@ public enum TextRecognition {
         for observation in observations {
             guard let candidate = observation.topCandidates(1).first else { continue }
             result.textLines.append(RecognizedLine(text: candidate.string, box: pixels(observation.boundingBox), confidence: candidate.confidence))
+            if let secrets {
+                for finding in SecretScanner.scan(candidate.string, kinds: secrets.isEmpty ? nil : secrets) {
+                    let box = (try? candidate.boundingBox(for: finding.range))?.boundingBox ?? observation.boundingBox
+                    result.secrets.append(RecognizedSecret(kind: finding.kind, masked: finding.masked, box: pixels(box)))
+                }
+            }
             guard let find, !find.isEmpty else { continue }
             let text = candidate.string
             var searchRange = text.startIndex..<text.endIndex

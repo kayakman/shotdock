@@ -55,6 +55,7 @@ final class SelfTest {
             case "cli-inspect": try await cliInspect()
             case "cli-share": try await cliShare()
             case "cli-prefs": try await cliPrefs()
+            case "cli-redact": try await cliRedact()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -911,7 +912,7 @@ final class SelfTest {
 
     // MARK: Helpers
 
-    private func waitFor(seconds: Double, _ condition: () -> Bool) async throws {
+    func waitFor(seconds: Double, _ condition: () -> Bool) async throws {
         let start = Date()
         while !condition(), Date().timeIntervalSince(start) < seconds { try await Task.sleep(for: .milliseconds(100)) }
     }

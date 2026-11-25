@@ -17,7 +17,7 @@ public extension AnnotationStyle {
 /// positions in image pixels from the top-left corner.
 ///
 ///     {"type": "arrow", "from": {"x": 10, "y": 20}, "to": {"x": 200, "y": 90}}
-///     {"type": "rectangle" | "oval" | "highlight" | "blur" | "pixelate" | "erase", "rect": {x, y, width, height}}
+///     {"type": "rectangle" | "oval" | "highlight" | "blur" | "pixelate" | "erase" | "redact", "rect": {x, y, width, height}}
 ///     {"type": "text", "at": {x, y}, "text": "Hola"}               at = top-left of the text
 ///     {"type": "step", "at": {x, y}, "number": 3}                  at = centre; number optional
 ///     {"type": "magnifier", "source": {rect}, "lens": {rect}, "zoom": 2, "round": true}   lens = the enlargement
@@ -29,7 +29,7 @@ public extension AnnotationStyle {
 /// Positions and sizes are pixels of the image as edited (crop, backdrop and
 /// resize applied), which is what agents are shown; `DocumentView` converts.
 public enum AnnotationCoding {
-    public static let types = ["arrow", "rectangle", "oval", "highlight", "text", "step", "blur", "pixelate", "erase", "magnifier"]
+    public static let types = ["arrow", "rectangle", "oval", "highlight", "text", "step", "blur", "pixelate", "erase", "redact", "magnifier"]
 
     /// JSON Schema of one annotation, for MCP.
     public static var schema: JSONValue {
@@ -84,6 +84,7 @@ public enum AnnotationCoding {
         case let .blur(r): object["type"] = "blur"; object["rect"] = rect(r)
         case let .pixelate(r): object["type"] = "pixelate"; object["rect"] = rect(r)
         case let .erase(r): object["type"] = "erase"; object["rect"] = rect(r)
+        case let .redact(r): object["type"] = "redact"; object["rect"] = rect(r)
         case let .text(origin, string):
             object["type"] = "text"; object["at"] = point(origin); object["text"] = .string(string)
         case let .step(center, number):
@@ -110,7 +111,7 @@ public enum AnnotationCoding {
         func point(_ key: String) throws -> CGPoint { view.toDocument(try value(key, \.point, "{x, y}")) }
         func rect(_ key: String) throws -> CGRect { view.toDocument(try value(key, \.rect, "{x, y, width, height}").standardized) }
 
-        var color = type == "highlight" ? RGBAColor.yellow : RGBAColor.red
+        var color = type == "highlight" ? RGBAColor.yellow : type == "redact" ? RGBAColor.black : RGBAColor.red
         if let text = object["color"]?.stringValue {
             guard let parsed = RGBAColor(string: text) else { throw RPCError.invalidParams("Unknown colour \"\(text)\"") }
             color = parsed
@@ -133,6 +134,7 @@ public enum AnnotationCoding {
         case "blur": shape = .blur(try rect("rect"))
         case "pixelate": shape = .pixelate(try rect("rect"))
         case "erase": shape = .erase(try rect("rect"))
+        case "redact": shape = .redact(try rect("rect"))
         case "text":
             let string = try value("text", \.stringValue, "a string")
             shape = .text(origin: try point("at"), string: string)
@@ -174,7 +176,7 @@ extension AnnotationCoding {
         switch type {
         case "rectangle", "oval": if object["rect"] == nil { object["rect"] = padded(4) }
         case "highlight": if object["rect"] == nil { object["rect"] = padded(1) }
-        case "blur", "pixelate", "erase": if object["rect"] == nil { object["rect"] = padded(2) }
+        case "blur", "pixelate", "erase", "redact": if object["rect"] == nil { object["rect"] = padded(2) }
         case "magnifier": if object["source"] == nil { object["source"] = padded(2) }
         case "text": if object["at"] == nil { object["at"] = JSONValue(CGPoint(x: box.minX, y: box.maxY + gap)) }
         case "step":

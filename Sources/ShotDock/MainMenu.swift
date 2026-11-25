@@ -54,6 +54,7 @@ enum MainMenu {
 
         let image = NSMenu(title: "Imagen")
         image.addItem(item("Redimensionar…", #selector(EditorWindowController.resizeImage(_:))))
+        image.addItem(item("Ocultar secretos", #selector(EditorWindowController.redactSecrets(_:))))
         add(image, to: main)
 
         let view = NSMenu(title: "Visualización")
