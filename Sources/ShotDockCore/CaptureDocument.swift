@@ -10,6 +10,8 @@ public struct CaptureDocument {
     public var scale: CGFloat
     public var annotations: [Annotation] = []
     public var crop: CGRect?
+    /// Frame for sharing; nil exports the capture alone.
+    public var backdrop: Backdrop?
     public var createdAt: Date
 
     /// Number for the next step marker.
@@ -28,9 +30,30 @@ public struct CaptureDocument {
     /// The part of the image that is exported.
     public var visibleRect: CGRect { (crop ?? fullRect).intersection(fullRect).pixelAligned }
 
-    /// The final image: annotations burned in and the crop applied.
+    /// What is drawn: the capture area and, with a backdrop, the canvas around it.
+    public var layout: (canvas: CGRect, content: CGRect) {
+        backdrop?.layout(content: visibleRect, scale: scale) ?? (visibleRect, visibleRect)
+    }
+
+    /// Draws the document into a top-left-origin context in image pixels.
+    public func draw(in context: CGContext, annotationsFilter: (Annotation) -> Bool = { _ in true }) {
+        let (canvas, content) = layout
+        context.saveGState()
+        if let backdrop {
+            backdrop.drawBackground(canvas: canvas, content: content, scale: scale, in: context)
+            context.addPath(backdrop.contentPath(content, scale: scale))
+            context.clip()
+        } else {
+            context.clip(to: content)
+        }
+        context.drawImageTopLeft(image, in: fullRect)
+        AnnotationRenderer.draw(annotations.filter(annotationsFilter), in: context, source: image)
+        context.restoreGState()
+    }
+
+    /// The final image: annotations burned in, the crop applied and the backdrop around it.
     public func flattened() -> CGImage? {
-        let rect = visibleRect
+        let rect = layout.canvas
         guard rect.width >= 1, rect.height >= 1,
               let context = CGContext(
                 data: nil, width: Int(rect.width), height: Int(rect.height),
@@ -40,8 +63,7 @@ public struct CaptureDocument {
         else { return nil }
         context.flipVertically(height: rect.height)
         context.translateBy(x: -rect.minX, y: -rect.minY)
-        context.drawImageTopLeft(image, in: fullRect)
-        AnnotationRenderer.draw(annotations, in: context, source: image)
+        draw(in: context)
         return context.makeImage()
     }
 }

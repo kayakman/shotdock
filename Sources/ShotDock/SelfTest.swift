@@ -41,6 +41,7 @@ final class SelfTest {
             case "measure": try await measure()
             case "history": try await history()
             case "pin-ocr": try await pinAndOCR()
+            case "backdrop": try await backdrop()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -355,6 +356,43 @@ final class SelfTest {
         if let view = coordinator.selection?.selectionViews.first, let window = view.window { sendKey(53, to: window) }
         try await Task.sleep(for: .milliseconds(200))
         check(coordinator.selection == nil, "Esc closes it")
+    }
+
+    /// The backdrop panel: on/off, presets, live sliders with one undo step.
+    private func backdrop() async throws {
+        let image = Self.testPattern(width: 1000, height: 600, text: "Fondo")
+        let editor = app.coordinator.openEditor(with: CaptureDocument(image: image, scale: 2))
+        try await Task.sleep(for: .milliseconds(300))
+        let model = editor.model
+        AppSettings.shared.lastBackdrop = Backdrop()
+        editor.toggleBackdropPanel(nil)
+        check(editor.isBackdropPanelVisible && model.backdrop != nil, "panel opens and turns the backdrop on")
+        check(model.flattened()?.width == 1000 + 2 * 96, "export includes the 48 pt margin")
+        check(editor.canvas.bounds == model.document.layout.canvas, "canvas shows the backdrop")
+
+        // A slider drag: many live changes, one undo step.
+        for padding in stride(from: 50, through: 90, by: 10) {
+            var b = model.backdrop!
+            b.padding = CGFloat(padding)
+            model.updateBackdrop(b, live: true)
+        }
+        model.commitBackdropEdit()
+        check(model.backdrop?.padding == 90, "live padding applied")
+        var b = model.backdrop!
+        b.fill = Backdrop.presets[2]
+        b.aspect = .wide
+        model.updateBackdrop(b)
+        check(model.flattened().map { abs(CGFloat($0.width) / CGFloat($0.height) - 16.0 / 9.0) < 0.01 } ?? false, "16:9 export")
+        try await Task.sleep(for: .milliseconds(300))
+        try await snapshot(editor.window!, to: sibling("backdrop"))
+        model.undoManager.undo()
+        check(model.backdrop?.aspect == .auto && model.backdrop?.padding == 90, "undo reverts the preset change")
+        model.undoManager.undo()
+        check(model.backdrop?.padding == 48, "the slider drag undoes in one step (\(model.backdrop?.padding ?? -1))")
+        model.setBackdropEnabled(false)
+        check(model.flattened()?.width == 1000, "turning it off exports the capture alone")
+        if let flat = model.flattened() { try ImageEncoding.write(flat, to: output, scale: 2) }
+        editor.close()
     }
 
     /// Pinned images, OCR from the shortcut and from the editor, QR codes.

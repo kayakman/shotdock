@@ -6,6 +6,7 @@ struct EditorToolbar: View {
     var onSave: () -> Void
     var onPin: () -> Void = {}
     var onRecognize: () -> Void = {}
+    var onBackdrop: () -> Void = {}
 
     private var customColor: Binding<Color> {
         Binding(get: { Color(cgColor: model.color.cgColor) },
@@ -54,6 +55,11 @@ struct EditorToolbar: View {
                     .foregroundStyle(.secondary)
                     .transition(.opacity)
             }
+
+            Button(action: onBackdrop) {
+                Image(systemName: model.backdrop == nil ? "rectangle.inset.filled" : "rectangle.inset.filled.on.rectangle")
+            }
+            .help("Fondo y marco para compartir (⌘B)")
 
             Button(action: onRecognize) {
                 Image(systemName: "text.viewfinder")

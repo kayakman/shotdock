@@ -178,25 +178,76 @@ final class EditorModel {
         if annotation != selected { replace(annotation, actionName: "Cambiar estilo") }
     }
 
+    /// The undoable part of a document.
+    private struct EditState {
+        var annotations: [Annotation]
+        var crop: CGRect?
+        var backdrop: Backdrop?
+    }
+
+    private var editState: EditState {
+        get { EditState(annotations: document.annotations, crop: document.crop, backdrop: document.backdrop) }
+        set {
+            document.annotations = newValue.annotations
+            document.crop = newValue.crop
+            document.backdrop = newValue.backdrop
+        }
+    }
+
     private func perform(_ actionName: String, _ change: (inout CaptureDocument) -> Void) {
-        let before = (document.annotations, document.crop)
+        let before = editState
         change(&document)
+        registerUndoGroup(restoring: before, actionName: actionName)
+    }
+
+    private func registerUndoGroup(restoring state: EditState, actionName: String) {
         undoManager.beginUndoGrouping()
-        registerUndo(restoring: before, actionName: actionName)
+        registerUndo(restoring: state, actionName: actionName)
         undoManager.endUndoGrouping()
     }
 
-    private func registerUndo(restoring state: ([Annotation], CGRect?), actionName: String) {
+    private func registerUndo(restoring state: EditState, actionName: String) {
         undoManager.registerUndo(withTarget: self) { model in
             MainActor.assumeIsolated {
-                let current = (model.document.annotations, model.document.crop)
-                model.document.annotations = state.0
-                model.document.crop = state.1
-                if let id = model.selectedID, !state.0.contains(where: { $0.id == id }) { model.selectedID = nil }
+                let current = model.editState
+                model.editState = state
+                if let id = model.selectedID, !state.annotations.contains(where: { $0.id == id }) { model.selectedID = nil }
                 model.registerUndo(restoring: current, actionName: actionName)
             }
         }
         undoManager.setActionName(actionName)
+    }
+
+    // MARK: Backdrop
+
+    @ObservationIgnored private var backdropBeforeEdit: EditState?
+
+    var backdrop: Backdrop? { document.backdrop }
+
+    /// Turns the backdrop on (with the last one used) or off.
+    func setBackdropEnabled(_ enabled: Bool) {
+        guard enabled != (document.backdrop != nil) else { return }
+        let backdrop = enabled ? AppSettings.shared.lastBackdrop : nil
+        perform(enabled ? "Añadir fondo" : "Quitar fondo") { $0.backdrop = backdrop }
+    }
+
+    /// Live change (sliders): call `commitBackdropEdit` when the gesture ends.
+    func updateBackdrop(_ backdrop: Backdrop, live: Bool = false) {
+        if live {
+            if backdropBeforeEdit == nil { backdropBeforeEdit = editState }
+            document.backdrop = backdrop
+        } else {
+            let before = backdropBeforeEdit ?? editState
+            backdropBeforeEdit = nil
+            document.backdrop = backdrop
+            registerUndoGroup(restoring: before, actionName: "Cambiar fondo")
+        }
+        AppSettings.shared.lastBackdrop = backdrop
+    }
+
+    func commitBackdropEdit() {
+        guard let backdrop = document.backdrop, backdropBeforeEdit != nil else { return }
+        updateBackdrop(backdrop)
     }
 
     // MARK: Output

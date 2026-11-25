@@ -25,6 +25,8 @@ final class AppSettings {
     var historyLimit: Int { didSet { defaults.set(historyLimit, forKey: "historyLimit") } }
     /// OCR joins the recognised lines into one paragraph.
     var ocrJoinLines: Bool { didSet { defaults.set(ocrJoinLines, forKey: "ocrJoinLines") } }
+    /// The backdrop used last, offered when the backdrop is turned on.
+    var lastBackdrop: Backdrop { didSet { save(lastBackdrop, "lastBackdrop") } }
     /// Last selected area in AppKit global coordinates, for "repeat area".
     var lastArea: CGRect? {
         didSet { lastArea.map { defaults.set(NSStringFromRect($0), forKey: "lastArea") } ?? defaults.removeObject(forKey: "lastArea") }
@@ -45,6 +47,7 @@ final class AppSettings {
         colorFormat = defaults.string(forKey: "colorFormat").flatMap(ColorFormat.init(rawValue:)) ?? .hex
         historyLimit = defaults.object(forKey: "historyLimit") as? Int ?? 200
         ocrJoinLines = defaults.object(forKey: "ocrJoinLines") as? Bool ?? false
+        lastBackdrop = defaults.data(forKey: "lastBackdrop").flatMap { try? JSONDecoder().decode(Backdrop.self, from: $0) } ?? Backdrop()
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
     }
 

@@ -38,13 +38,17 @@ final class CanvasView: NSView, NSTextFieldDelegate {
 
     /// Matches the view to the visible part of the document, at 1 point per
     /// screen point of the original capture.
-    func syncGeometry() {
-        let rect = model.document.visibleRect
+    /// Returns true when the canvas got bigger.
+    @discardableResult
+    func syncGeometry() -> Bool {
+        let rect = model.document.layout.canvas
         let scale = model.document.scale
         let size = NSSize(width: rect.width / scale, height: rect.height / scale)
+        let grew = size.width > frame.width || size.height > frame.height
         if frame.size != size { setFrameSize(size) }
         if bounds != rect { bounds = rect }
         needsDisplay = true
+        return grew
     }
 
     private var pixelsPerScreenPoint: CGFloat {
@@ -58,8 +62,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
         let document = model.document
         context.interpolationQuality = (enclosingScrollView?.magnification ?? 1) > 1.5 ? .none : .high
-        context.drawImageTopLeft(document.image, in: document.fullRect)
-        AnnotationRenderer.draw(document.annotations.filter { $0.id != editingText?.id }, in: context, source: document.image)
+        let editingID = editingText?.id
+        document.draw(in: context) { $0.id != editingID }
 
         switch drag {
         case let .drawing(_, annotation):

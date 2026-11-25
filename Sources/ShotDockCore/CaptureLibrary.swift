@@ -112,6 +112,7 @@ public final class CaptureLibrary {
         if let data = try? Data(contentsOf: documentURL(id)), let state = try? Self.decoder.decode(DocumentState.self, from: data) {
             document.annotations = state.annotations
             document.crop = state.crop
+            document.backdrop = state.backdrop
         }
         return document
     }
@@ -121,14 +122,15 @@ public final class CaptureLibrary {
     private struct DocumentState: Codable {
         var annotations: [Annotation]
         var crop: CGRect?
+        var backdrop: Backdrop?
     }
 
     private func writeDocumentState(_ document: CaptureDocument, item: inout CaptureItem) throws {
-        let state = DocumentState(annotations: document.annotations, crop: document.crop)
+        let state = DocumentState(annotations: document.annotations, crop: document.crop, backdrop: document.backdrop)
         try Self.encoder.encode(state).write(to: documentURL(item.id), options: .atomic)
-        let visible = document.visibleRect
-        item.pixelWidth = Int(visible.width)
-        item.pixelHeight = Int(visible.height)
+        let canvas = document.layout.canvas
+        item.pixelWidth = Int(canvas.width)
+        item.pixelHeight = Int(canvas.height)
         item.annotationCount = document.annotations.count
         if let flat = document.flattened(), let thumbnail = Self.thumbnail(of: flat) {
             try ImageEncoding.write(thumbnail, to: thumbnailURL(item.id))

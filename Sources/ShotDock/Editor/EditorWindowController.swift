@@ -7,6 +7,9 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     let model: EditorModel
     let canvas: CanvasView
     private let scrollView = NSScrollView()
+    private var inspector: NSView?
+    private var scrollTrailing: NSLayoutConstraint?
+    private var scrollToInspector: NSLayoutConstraint?
     private weak var coordinator: CaptureCoordinator?
     /// The history entry this editor writes its changes to.
     let libraryItemID: UUID?
@@ -29,7 +32,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         buildContent()
         model.onDocumentChange = { [weak self] in
             guard let self else { return }
-            canvas.syncGeometry()
+            let grew = canvas.syncGeometry()
+            if grew { zoomToFitIfNeeded() }
             if let libraryItemID { LibraryStore.shared.scheduleUpdate(libraryItemID, with: model.document) }
         }
         sizeWindowToFit()
@@ -44,7 +48,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             model: model,
             onSave: { [weak self] in self?.saveDocument(nil) },
             onPin: { [weak self] in self?.pinImage(nil) },
-            onRecognize: { [weak self] in self?.recognizeText(nil) }))
+            onRecognize: { [weak self] in self?.recognizeText(nil) },
+            onBackdrop: { [weak self] in self?.toggleBackdropPanel(nil) }))
         toolbar.translatesAutoresizingMaskIntoConstraints = false
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -59,18 +64,30 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         scrollView.backgroundColor = .underPageBackgroundColor
         scrollView.drawsBackground = true
 
+        let inspector = NSHostingView(rootView: BackdropInspector(model: model))
+        inspector.translatesAutoresizingMaskIntoConstraints = false
+        inspector.isHidden = true
+        self.inspector = inspector
+
         let content = NSView()
         content.addSubview(toolbar)
         content.addSubview(scrollView)
+        content.addSubview(inspector)
         NSLayoutConstraint.activate([
             toolbar.topAnchor.constraint(equalTo: content.topAnchor),
             toolbar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             toolbar.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            inspector.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
+            inspector.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            inspector.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            inspector.widthAnchor.constraint(equalToConstant: 270),
         ])
+        scrollTrailing = scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor)
+        scrollTrailing?.isActive = true
+        scrollToInspector = scrollView.trailingAnchor.constraint(equalTo: inspector.leadingAnchor)
         window.contentView = content
         window.contentMinSize = NSSize(width: 1040, height: 240)
     }
@@ -139,6 +156,38 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             }
         }
     }
+
+    /// Shows or hides the backdrop panel; showing it turns the backdrop on.
+    @objc func toggleBackdropPanel(_ sender: Any?) {
+        guard let inspector else { return }
+        let show = inspector.isHidden
+        inspector.isHidden = !show
+        scrollTrailing?.isActive = !show
+        scrollToInspector?.isActive = show
+        if show {
+            model.setBackdropEnabled(true)
+            // Make room for the panel when the screen allows it.
+            if let window, let screen = window.screen?.visibleFrame {
+                var frame = window.frame
+                frame.size.width = min(frame.width + 270, screen.width)
+                frame.origin.x = min(frame.minX, screen.maxX - frame.width)
+                window.setFrame(frame, display: true, animate: false)
+            }
+        }
+        zoomToFitIfNeeded()
+    }
+
+    /// Zooms out when the canvas (e.g. with a backdrop) no longer fits.
+    func zoomToFitIfNeeded() {
+        scrollView.layoutSubtreeIfNeeded()
+        let viewport = scrollView.contentSize
+        let size = canvas.frame.size
+        guard size.width > 0, size.height > 0 else { return }
+        let fit = min(1, (viewport.width - 24) / size.width, (viewport.height - 24) / size.height)
+        if fit < scrollView.magnification { scrollView.magnification = fit }
+    }
+
+    var isBackdropPanelVisible: Bool { inspector?.isHidden == false }
 
     /// Pins the edited image where the editor is and closes the editor.
     @objc func pinImage(_ sender: Any?) {
