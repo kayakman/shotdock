@@ -235,8 +235,19 @@ final class SelfTest {
         guard let flat = model.flattened() else { return fail("could not flatten") }
         try ImageEncoding.write(flat, to: output, scale: 2)
         note("wrote \(output.path)")
-        editor.close()
-        check(app.coordinator.editors.isEmpty, "closing releases the editor")
+
+        // ⌃⇧C: a main-menu shortcut whose action the editor handles. (A synthetic key press
+        // only reaches the editor when ShotDock is the active app, which a selftest cannot force.)
+        let menuItem = NSApp.mainMenu?.items.compactMap(\.submenu).flatMap(\.items)
+            .first { $0.action == #selector(EditorWindowController.copyAndClose(_:)) }
+        check(menuItem?.keyEquivalent == "c" && menuItem?.keyEquivalentModifierMask == [.control, .shift], "⌃⇧C is in the Edit menu")
+        check(editor.responds(to: #selector(EditorWindowController.copyAndClose(_:))), "the editor handles it")
+        NSPasteboard.general.clearContents()
+        editor.copyAndClose(nil)
+        try await Task.sleep(for: .milliseconds(300))
+        let copied = NSPasteboard.general.data(forType: .png).flatMap { try? ImageEncoding.image(from: $0) }
+        check(copied?.width == 950 && copied?.height == 650, "⌃⇧C copies the edited image")
+        check(app.coordinator.editors.isEmpty && !window.isVisible, "⌃⇧C closes the editor and releases it")
     }
 
     /// Asset catalog resources: menu bar template, logo in both appearances,

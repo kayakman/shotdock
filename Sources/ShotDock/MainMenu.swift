@@ -36,6 +36,7 @@ enum MainMenu {
         edit.addItem(.separator())
         edit.addItem(item("Cortar", #selector(NSText.cut(_:)), "x"))
         edit.addItem(item("Copiar", #selector(NSText.copy(_:)), "c"))
+        edit.addItem(item("Copiar y cerrar", #selector(EditorWindowController.copyAndClose(_:)), "c", [.control, .shift]))
         edit.addItem(item("Pegar", #selector(NSText.paste(_:)), "v"))
         edit.addItem(item("Eliminar", #selector(NSText.delete(_:)), "\u{8}", []))
         edit.addItem(item("Seleccionar todo", #selector(NSText.selectAll(_:)), "a"))
