@@ -3,7 +3,7 @@ SIGN_IDENTITY ?= ShotDock Local Signing
 APP           := build/ShotDock.app
 BIN_DIR        = $(shell swift build -c $(CONFIG) --show-bin-path)
 
-.PHONY: build app run test selftest selftest-upload install signing-cert icons clean
+.PHONY: build app run test selftest selftest-upload selftest-cli install signing-cert icons clean
 
 build:
 	swift build -c $(CONFIG)
@@ -65,3 +65,14 @@ clean:
 selftest-upload: app
 	@python3 -I scripts/mock-s3.py --port 9555 > build/mock-s3.log 2>&1 & echo $$! > build/mock-s3.pid; sleep 1; \
 	$(MAKE) selftest TEST=upload; status=$$?; kill `cat build/mock-s3.pid`; rm -f build/mock-s3.pid; exit $$status
+
+# Every CLI and MCP selftest with the real `shotdock` binary. cli-capture needs
+# the Screen Recording permission and an unlocked screen.
+CLI_TESTS ?= cli mcp cli-history cli-edit cli-inspect cli-share cli-prefs cli-redact cli-capture
+selftest-cli: app
+	@failed=""; for t in $(CLI_TESTS); do \
+		$(MAKE) --no-print-directory selftest TEST=$$t >/dev/null 2>&1; \
+		echo "$$t: $$(grep -c '^OK' build/selftest.log) OK, $$(grep -c '^FAIL' build/selftest.log) FAIL"; \
+		grep '^FAIL' build/selftest.log | sed 's/^/    /'; \
+		grep -q '^FAIL' build/selftest.log && failed="$$failed $$t"; \
+	done; [ -z "$$failed" ] || { echo "failed:$$failed"; exit 1; }
