@@ -10,13 +10,15 @@ build:
 
 app: build
 	rm -rf $(APP)
-	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
+	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources $(APP)/Contents/Helpers
 	cp Resources/Info.plist $(APP)/Contents/Info.plist
 	cp $(BIN_DIR)/ShotDock $(APP)/Contents/MacOS/ShotDock
+	cp $(BIN_DIR)/shotdock-cli $(APP)/Contents/Helpers/shotdock
 	xcrun actool Resources/Assets.xcassets --compile $(APP)/Contents/Resources \
 		--platform macosx --minimum-deployment-target 15.0 \
 		--app-icon AppIcon --accent-color AccentColor \
 		--output-partial-info-plist build/assets-info.plist --errors --warnings >/dev/null
+	codesign --force --sign "$(SIGN_IDENTITY)" --identifier app.shotdock.ShotDock.cli $(APP)/Contents/Helpers/shotdock
 	codesign --force --sign "$(SIGN_IDENTITY)" --identifier app.shotdock.ShotDock $(APP)
 	@echo "Built $(APP)"
 
@@ -32,7 +34,7 @@ test:
 TEST ?= capture
 selftest: app
 	-pkill -x ShotDock
-	rm -f build/selftest*.png build/selftest.log
+	rm -f build/selftest*.png build/selftest.log build/selftest.sock
 	open -W -n $(APP) --args --selftest $(TEST) $(CURDIR)/build/selftest.png
 	@cat build/selftest.log
 	@! grep -q '^FAIL' build/selftest.log
@@ -40,12 +42,17 @@ selftest: app
 icons:
 	swift design/make-icons.swift
 
-# Release build copied to /Applications (launch at login works best from there).
+# Release build copied to /Applications (launch at login works best from there),
+# with `shotdock` linked into /usr/local/bin (or ~/.local/bin).
+CLI_LINK_DIR ?= $(shell [ -w /usr/local/bin ] && echo /usr/local/bin || echo $(HOME)/.local/bin)
 install:
 	$(MAKE) app CONFIG=release
 	-pkill -x ShotDock
 	rm -rf /Applications/ShotDock.app
 	cp -R $(APP) /Applications/ShotDock.app
+	mkdir -p $(CLI_LINK_DIR)
+	ln -sf /Applications/ShotDock.app/Contents/Helpers/shotdock $(CLI_LINK_DIR)/shotdock
+	@echo "shotdock -> $(CLI_LINK_DIR)/shotdock"
 	open /Applications/ShotDock.app
 
 signing-cert:

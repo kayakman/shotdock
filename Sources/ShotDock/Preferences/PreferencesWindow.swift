@@ -3,7 +3,7 @@ import ShotDockCore
 import SwiftUI
 
 enum PreferencesTab: Int, CaseIterable {
-    case general, capture, shortcuts, history, upload, importing
+    case general, capture, shortcuts, history, upload, agents, importing
 
     var title: String {
         switch self {
@@ -12,6 +12,7 @@ enum PreferencesTab: Int, CaseIterable {
         case .shortcuts: "Atajos"
         case .history: "Historial"
         case .upload: "Subida"
+        case .agents: "Agentes"
         case .importing: "Importar"
         }
     }
@@ -23,6 +24,7 @@ enum PreferencesTab: Int, CaseIterable {
         case .shortcuts: "keyboard"
         case .history: "clock.arrow.circlepath"
         case .upload: "icloud.and.arrow.up"
+        case .agents: "terminal"
         case .importing: "square.and.arrow.down"
         }
     }
@@ -50,6 +52,7 @@ final class PreferencesWindowController: NSWindowController {
             case .shortcuts: AnyView(ShortcutsPane(settings: settings, manager: shortcuts))
             case .history: AnyView(HistoryPane(settings: settings))
             case .upload: AnyView(UploadPreferences(settings: settings, window: parent))
+            case .agents: AnyView(AgentsPreferences(settings: settings))
             case .importing: AnyView(ImportPane(settings: settings, window: parent))
             }
             let controller = NSHostingController(rootView: view.padding(.horizontal, 32).frame(width: 680).padding(.vertical, 20))

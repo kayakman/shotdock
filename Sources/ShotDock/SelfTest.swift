@@ -9,8 +9,8 @@ import ShotDockCore
 /// `selftest.log` next to the output file; any line starting with FAIL fails.
 @MainActor
 final class SelfTest {
-    private let app: AppDelegate
-    private let output: URL
+    let app: AppDelegate
+    let output: URL
     private var lines: [String] = []
 
     private init(app: AppDelegate, output: URL) {
@@ -47,6 +47,7 @@ final class SelfTest {
             case "dock": try await dock()
             case "magnifier": try await magnifier()
             case "overlay-fidelity": try await overlayFidelity()
+            case "cli": try await cli()
             default: fail("unknown selftest \(name)")
             }
         } catch {
@@ -57,11 +58,11 @@ final class SelfTest {
         NSApp.terminate(nil)
     }
 
-    private func note(_ line: String) { lines.append(line) }
-    private func fail(_ line: String) { lines.append("FAIL \(line)") }
-    private func check(_ condition: Bool, _ what: String) { lines.append("\(condition ? "OK" : "FAIL") \(what)") }
+    func note(_ line: String) { lines.append(line) }
+    func fail(_ line: String) { lines.append("FAIL \(line)") }
+    func check(_ condition: Bool, _ what: String) { lines.append("\(condition ? "OK" : "FAIL") \(what)") }
 
-    private func sibling(_ suffix: String) -> URL {
+    func sibling(_ suffix: String) -> URL {
         let base = output.deletingPathExtension().lastPathComponent
         return output.deletingLastPathComponent().appendingPathComponent("\(base)-\(suffix).png")
     }

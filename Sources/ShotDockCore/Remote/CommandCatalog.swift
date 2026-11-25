@@ -3,7 +3,7 @@ import Foundation
 /// The commands, in the order help lists them. Each phase of the CLI adds
 /// its own; the app answers every `.app` command.
 public enum CommandCatalog {
-    public static let all: [CommandSpec] = general
+    public static let all: [CommandSpec] = general + screens
 
     public static func command(_ name: String) -> CommandSpec? { all.first { $0.name == name } }
 
@@ -34,5 +34,19 @@ public enum CommandCatalog {
     static let general: [CommandSpec] = [
         CommandSpec("status", "ShotDock's version, permissions and displays", readOnly: true),
         CommandSpec("schema", "Print every command and its parameters as JSON", exposure: .local, readOnly: true),
+    ]
+
+    // MARK: Displays and windows
+
+    static let screens: [CommandSpec] = [
+        CommandSpec("displays", "List the displays: number, id, frame in points, scale, size in pixels", mcp: "list_displays", readOnly: true),
+        CommandSpec("windows", "List the windows that can be captured, front to back", details: """
+            Frames are global points with the origin at the top-left of the main display. The id is what
+            `capture window --id` takes.
+            """, params: [
+                ParamSpec("app", .string, "Only apps whose name contains this (case, accents and spaces ignored)"),
+                ParamSpec("title", .string, "Only windows whose title contains this"),
+                ParamSpec("all", .boolean, "Include minimised and off-screen windows"),
+            ], mcp: "list_windows", readOnly: true),
     ]
 }

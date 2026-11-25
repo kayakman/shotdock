@@ -30,8 +30,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         setUpStatusItem()
         shortcuts.registerAll()
+        ControlService.shared.start()
         if !ScreenCapturer.hasPermission { ScreenCapturer.requestPermission() }
         offerShottrImportOnce()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        ControlService.shared.stop()
     }
 
     /// The main menu carries the editor shortcuts, so it follows their settings.

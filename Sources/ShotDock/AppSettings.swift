@@ -34,6 +34,10 @@ final class AppSettings {
     /// Show in the Dock while an editor, the gallery or the preferences are open.
     var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock") } }
     var uploadAfterCapture: Bool { didSet { defaults.set(uploadAfterCapture, forKey: "uploadAfterCapture") } }
+    /// `shotdock` and its MCP server may drive the app (off until the user turns it on).
+    var agentControlEnabled: Bool { didSet { defaults.set(agentControlEnabled, forKey: "agentControlEnabled") } }
+    /// Agents the user allowed, asked the first time each one connects.
+    var approvedAgents: [AgentClient] { didSet { save(approvedAgents, "approvedAgents") } }
     /// Last selected area in AppKit global coordinates, for "repeat area".
     var lastArea: CGRect? {
         didSet { lastArea.map { defaults.set(NSStringFromRect($0), forKey: "lastArea") } ?? defaults.removeObject(forKey: "lastArea") }
@@ -60,6 +64,8 @@ final class AppSettings {
         showInDock = defaults.object(forKey: "showInDock") as? Bool ?? true
         scrollMaxHeight = defaults.object(forKey: "scrollMaxHeight") as? Int ?? 20_000
         uploadAfterCapture = defaults.object(forKey: "uploadAfterCapture") as? Bool ?? false
+        agentControlEnabled = defaults.object(forKey: "agentControlEnabled") as? Bool ?? false
+        approvedAgents = defaults.data(forKey: "approvedAgents").flatMap { try? JSONDecoder().decode([AgentClient].self, from: $0) } ?? []
         lastBackdrop = defaults.data(forKey: "lastBackdrop").flatMap { try? JSONDecoder().decode(Backdrop.self, from: $0) } ?? Backdrop()
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
     }
