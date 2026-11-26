@@ -130,7 +130,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         canvas.commitTextEditing()
         guard let image = model.flattened(), Pasteboard.copy(image, scale: model.document.exportScale) else { return }
         window?.performClose(nil)
-        HUD.show("Copiado", symbol: "checkmark.circle.fill")
+        HUD.show(String(localized: "Copied"), symbol: "checkmark.circle.fill")
     }
 
     /// ⌘S: straight to the folder and name pattern from the preferences.
@@ -140,7 +140,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         do {
             let url = try coordinator.save(image, scale: model.document.exportScale, date: model.document.createdAt)
             if let libraryItemID { LibraryStore.shared.markSaved(libraryItemID, at: url) }
-            model.flash("Guardado: \(url.lastPathComponent)")
+            model.flash(String(localized: "Saved: \(url.lastPathComponent)"))
         } catch {
             window.map { NSAlert(error: error).beginSheetModal(for: $0) }
         }
@@ -160,7 +160,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
             guard response == .OK, let url = panel.url else { return }
             do {
                 try ImageEncoding.write(image, to: url, format: format, scale: model.document.exportScale)
-                model.flash("Guardado")
+                model.flash(String(localized: "Saved"))
             } catch {
                 NSAlert(error: error).beginSheetModal(for: window)
             }
@@ -194,19 +194,19 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
     @objc func redactSecrets(_ sender: Any?) {
         canvas.commitTextEditing()
         let document = model.document
-        model.flash("Buscando secretos…")
+        model.flash(String(localized: "Looking for secrets…"))
         Task { [model] in
             do {
                 let (boxes, _) = try await Redaction.annotations(for: document)
-                guard !boxes.isEmpty else { return model.flash("No se han encontrado secretos") }
+                guard !boxes.isEmpty else { return model.flash(String(localized: "No secrets found")) }
                 // The boxes are where the secrets were; not if the crop or size changed meanwhile.
                 guard DocumentView(model.document) == DocumentView(document), model.document.outputSize == document.outputSize else {
-                    return model.flash("La captura ha cambiado: vuelve a ocultar los secretos")
+                    return model.flash(String(localized: "The capture changed: hide the secrets again"))
                 }
-                model.applyExternal("Ocultar secretos") { $0.annotations += boxes }
-                model.flash(boxes.count == 1 ? "1 secreto oculto" : "\(boxes.count) secretos ocultos")
+                model.applyExternal(String(localized: "Hide Secrets")) { $0.annotations += boxes }
+                model.flash(boxes.count == 1 ? String(localized: "1 secret hidden") : String(localized: "\(boxes.count) secrets hidden"))
             } catch {
-                model.flash("No se pudo leer el texto")
+                model.flash(String(localized: "Could not read the text"))
             }
         }
     }

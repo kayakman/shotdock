@@ -24,12 +24,12 @@ final class ResizePanel: NSObject, NSTextFieldDelegate {
     /// `completion` gets the new factor, nil for the original size; not called on cancel.
     func run(on window: NSWindow, completion: @escaping (CGFloat?) -> Void) {
         let alert = NSAlert()
-        alert.messageText = "Redimensionar"
-        alert.informativeText = "Tamaño de la imagen al copiarla, guardarla o subirla. La original (\(Int(canvas.width)) × \(Int(canvas.height)) px) se conserva."
-        alert.addButton(withTitle: "Redimensionar")
-        alert.addButton(withTitle: "Cancelar")
-        alert.addButton(withTitle: "Tamaño original")
-        let row = NSStackView(views: [NSTextField(labelWithString: "Ancho:"), widthField, NSTextField(labelWithString: "Alto:"), heightField,
+        alert.messageText = String(localized: "Resize")
+        alert.informativeText = String(localized: "Size of the image when it is copied, saved or uploaded. The original (\(Int(canvas.width)) × \(Int(canvas.height)) px) is kept.")
+        alert.addButton(withTitle: String(localized: "Resize"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.addButton(withTitle: String(localized: "Original Size"))
+        let row = NSStackView(views: [NSTextField(labelWithString: String(localized: "Width:")), widthField, NSTextField(labelWithString: String(localized: "Height:")), heightField,
                                       NSTextField(labelWithString: "px")])
         row.spacing = 6
         row.frame = CGRect(x: 0, y: 0, width: 320, height: 24)

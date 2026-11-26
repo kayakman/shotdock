@@ -9,19 +9,19 @@ enum EditorTool: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .arrow: "Flecha"
-        case .rectangle: "Rectángulo"
-        case .ellipse: "Óvalo"
-        case .highlight: "Resaltador"
-        case .text: "Texto"
-        case .step: "Paso numerado"
-        case .magnifier: "Lupa"
-        case .blur: "Desenfocar"
-        case .pixelate: "Pixelar"
-        case .eraser: "Borrador inteligente"
-        case .crop: "Recortar"
-        case .ruler: "Regla"
-        case .colorPicker: "Cuentagotas"
+        case .arrow: String(localized: "Arrow")
+        case .rectangle: String(localized: "Rectangle")
+        case .ellipse: String(localized: "Oval")
+        case .highlight: String(localized: "Highlighter")
+        case .text: String(localized: "Text")
+        case .step: String(localized: "Numbered Step")
+        case .magnifier: String(localized: "Magnifier")
+        case .blur: String(localized: "Blur")
+        case .pixelate: String(localized: "Pixelate")
+        case .eraser: String(localized: "Smart Eraser")
+        case .crop: String(localized: "Crop")
+        case .ruler: String(localized: "Ruler")
+        case .colorPicker: String(localized: "Color Picker")
         }
     }
 
@@ -78,9 +78,9 @@ enum LineWeight: CGFloat, CaseIterable, Identifiable {
     var id: CGFloat { rawValue }
     var title: String {
         switch self {
-        case .thin: "Fino"
-        case .medium: "Medio"
-        case .thick: "Grueso"
+        case .thin: String(localized: "Thin")
+        case .medium: String(localized: "Medium")
+        case .thick: String(localized: "Thick")
         }
     }
 }
@@ -112,7 +112,7 @@ final class EditorModel {
             guard var annotation = selected, case let .magnifier(source, target, round) = annotation.shape,
                   round != magnifierRound else { return }
             annotation.shape = .magnifier(source: source, target: target, round: magnifierRound)
-            replace(annotation, actionName: "Cambiar forma de la lupa")
+            replace(annotation, actionName: String(localized: "Change Magnifier Shape"))
         }
     }
 
@@ -179,20 +179,20 @@ final class EditorModel {
     }
 
     func delete(id: UUID) {
-        perform("Eliminar") { $0.annotations.removeAll { $0.id == id } }
+        perform(String(localized: "Delete")) { $0.annotations.removeAll { $0.id == id } }
         if selectedID == id { selectedID = nil }
     }
 
     func crop(to rect: CGRect) {
         let rect = rect.intersection(document.visibleRect).pixelAligned
         guard rect.width >= 4, rect.height >= 4 else { return }
-        perform("Recortar") { $0.crop = rect }
+        perform(String(localized: "Crop")) { $0.crop = rect }
     }
 
     private func restyleSelection(_ change: (inout AnnotationStyle) -> Void) {
         guard var annotation = selected else { return }
         change(&annotation.style)
-        if annotation != selected { replace(annotation, actionName: "Cambiar estilo") }
+        if annotation != selected { replace(annotation, actionName: String(localized: "Change Style")) }
     }
 
     /// The undoable part of a document.
@@ -217,7 +217,7 @@ final class EditorModel {
     func resize(to factor: CGFloat?) {
         let factor = factor.flatMap { abs($0 - 1) < 0.0001 ? nil : $0 }
         guard factor != document.resize else { return }
-        perform(factor == nil ? "Tamaño original" : "Redimensionar") { $0.resize = factor }
+        perform(factor == nil ? String(localized: "Original Size") : String(localized: "Resize")) { $0.resize = factor }
     }
 
     /// A change made from outside the editor (an agent), undoable like the user's own.
@@ -260,7 +260,7 @@ final class EditorModel {
     func setBackdropEnabled(_ enabled: Bool) {
         guard enabled != (document.backdrop != nil) else { return }
         let backdrop = enabled ? AppSettings.shared.lastBackdrop : nil
-        perform(enabled ? "Añadir fondo" : "Quitar fondo") { $0.backdrop = backdrop }
+        perform(enabled ? String(localized: "Add Backdrop") : String(localized: "Remove Backdrop")) { $0.backdrop = backdrop }
     }
 
     /// Live change (sliders): call `commitBackdropEdit` when the gesture ends.
@@ -272,7 +272,7 @@ final class EditorModel {
             let before = backdropBeforeEdit ?? editState
             backdropBeforeEdit = nil
             document.backdrop = backdrop
-            registerUndoGroup(restoring: before, actionName: "Cambiar fondo")
+            registerUndoGroup(restoring: before, actionName: String(localized: "Change Backdrop"))
         }
         AppSettings.shared.lastBackdrop = backdrop
     }
@@ -288,7 +288,7 @@ final class EditorModel {
 
     func copyToClipboard() {
         guard let image = flattened(), Pasteboard.copy(image, scale: document.exportScale) else { return }
-        flash("Copiado")
+        flash(String(localized: "Copied"))
     }
 
     /// Copies the colour of a pixel in the format chosen in Preferences.
@@ -297,7 +297,7 @@ final class EditorModel {
         let text = AppSettings.shared.colorFormat.string(for: color)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-        flash("Copiado \(text)")
+        flash(String(localized: "Copied \(text)"))
     }
 
     func flash(_ message: String) {

@@ -28,20 +28,20 @@ enum RemoteEditing {
                 guard !prefixes.isEmpty else { throw RPCError.invalidParams("annotation.remove needs ids, or all") }
                 removed = Set(try prefixes.map { try annotation($0, in: document).id })
             }
-            let edited = try RemoteDocuments.edit(id, "Eliminar") { $0.annotations.removeAll { removed.contains($0.id) } }
+            let edited = try RemoteDocuments.edit(id, String(localized: "Delete")) { $0.annotations.removeAll { removed.contains($0.id) } }
             return try RemoteDocuments.result(id, edited, extra: ["removed": .number(Double(removed.count))])
         },
         "crop": { params, _ in
             let id = try RemoteDocuments.resolve(params["target"])
             let document = try RemoteDocuments.document(id)
             if params["reset"]?.boolValue == true {
-                return try RemoteDocuments.result(id, try RemoteDocuments.edit(id, "Deshacer recorte") { $0.crop = nil })
+                return try RemoteDocuments.result(id, try RemoteDocuments.edit(id, String(localized: "Remove Crop")) { $0.crop = nil })
             }
             guard var rect = params["rect"]?.rect else { throw RPCError.invalidParams("crop needs rect, or reset") }
             if params["space"]?.stringValue == "preview" { rect = rect.scaled(by: 1 / ImagePreview.scale(for: document.outputSize)) }
             let crop = DocumentView(document).toDocument(rect).intersection(document.fullRect).pixelAligned
             guard crop.width >= 4, crop.height >= 4 else { throw RPCError.invalidParams("The crop must be at least 4×4 pixels of the image") }
-            return try RemoteDocuments.result(id, try RemoteDocuments.edit(id, "Recortar") { $0.crop = crop })
+            return try RemoteDocuments.result(id, try RemoteDocuments.edit(id, String(localized: "Crop")) { $0.crop = crop })
         },
         "resize": { params, _ in
             let id = try RemoteDocuments.resolve(params["target"])
@@ -54,7 +54,7 @@ enum RemoteEditing {
                 guard value >= 0.05, value <= 8 else { throw RPCError.invalidParams("That is \(Int(value * 100)) % of the size; use 5 % to 800 %") }
                 if abs(value - 1) < 0.0001 { factor = nil }
             }
-            let edited = try RemoteDocuments.edit(id, factor == nil ? "Tamaño original" : "Redimensionar") { $0.resize = factor }
+            let edited = try RemoteDocuments.edit(id, factor == nil ? String(localized: "Original Size") : String(localized: "Resize")) { $0.resize = factor }
             return try RemoteDocuments.result(id, edited)
         },
         "backdrop": { params, _ in try backdrop(params) },
@@ -71,7 +71,7 @@ enum RemoteEditing {
             if params["dry_run"]?.boolValue == true || boxes.isEmpty {
                 return try RemoteDocuments.result(id, document, extra: ["found": report, "covered": .number(0)])
             }
-            let edited = try RemoteDocuments.edit(id, "Ocultar secretos") { $0.annotations += boxes }
+            let edited = try RemoteDocuments.edit(id, String(localized: "Hide Secrets")) { $0.annotations += boxes }
             return try RemoteDocuments.result(id, edited, extra: ["found": report, "covered": .number(Double(boxes.count))])
         },
     ]
@@ -100,7 +100,7 @@ enum RemoteEditing {
             added.append(annotation)
         }
         if !located.isEmpty { try RemoteDocuments.unchanged(id, since: document) }
-        let edited = try RemoteDocuments.edit(id, added.count == 1 ? "Anotar" : "Anotar (\(added.count))") { $0.annotations += added }
+        let edited = try RemoteDocuments.edit(id, added.count == 1 ? String(localized: "Annotate") : String(localized: "Annotate (\(added.count))")) { $0.annotations += added }
         var extra: [String: JSONValue] = ["added": .array(added.map { .string($0.id.uuidString) })]
         extra["warnings"] = await warnings(added, in: edited)
         return try RemoteDocuments.result(id, edited, extra: extra)
@@ -155,7 +155,7 @@ enum RemoteEditing {
         }
         merged.merge(changes) { _, new in new }
         let changed = try AnnotationCoding.annotation(from: .object(merged), for: document, view: view)
-        let edited = try RemoteDocuments.edit(id, "Cambiar") { document in
+        let edited = try RemoteDocuments.edit(id, String(localized: "Change")) { document in
             guard let index = document.annotations.firstIndex(where: { $0.id == existing.id }) else { return }
             document.annotations[index] = changed
         }
@@ -177,7 +177,7 @@ enum RemoteEditing {
         let id = try RemoteDocuments.resolve(params["target"])
         let document = try RemoteDocuments.document(id)
         if params["off"]?.boolValue == true {
-            return try RemoteDocuments.result(id, try RemoteDocuments.edit(id, "Quitar fondo") { $0.backdrop = nil })
+            return try RemoteDocuments.result(id, try RemoteDocuments.edit(id, String(localized: "Remove Backdrop")) { $0.backdrop = nil })
         }
         var backdrop = document.backdrop ?? AppSettings.shared.lastBackdrop
         if let preset = params["preset"]?.intValue {
@@ -198,7 +198,7 @@ enum RemoteEditing {
         if let shadow = params["shadow"]?.doubleValue { backdrop.shadow = min(max(shadow, 0), 1) }
         if let aspect = params["aspect"]?.stringValue.flatMap({ aspects[$0] }) { backdrop.aspect = aspect }
         AppSettings.shared.lastBackdrop = backdrop
-        let edited = try RemoteDocuments.edit(id, document.backdrop == nil ? "Añadir fondo" : "Cambiar fondo") { $0.backdrop = backdrop }
+        let edited = try RemoteDocuments.edit(id, document.backdrop == nil ? String(localized: "Add Backdrop") : String(localized: "Change Backdrop")) { $0.backdrop = backdrop }
         return try RemoteDocuments.result(id, edited, extra: ["backdrop": try JSONValue(encoding: backdrop)])
     }
 }
@@ -229,7 +229,7 @@ extension RemoteDocuments {
         let modified = (try? FileManager.default.attributesOfItem(atPath: path)[.modificationDate] as? Date) ?? .distantPast
         if reuse, let known = imported[path], known.modified == modified, LibraryStore.shared.item(known.id) != nil { return known.id }
         guard let id = LibraryStore.shared.add(try load(path, scale: scale)) else {
-            throw RPCError.notFound("The history is off (Preferencias › Historial)")
+            throw RPCError.notFound("The history is off (Preferences › History)")
         }
         imported[path] = (modified, id)
         return id

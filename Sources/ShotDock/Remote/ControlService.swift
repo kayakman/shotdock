@@ -90,10 +90,10 @@ final class ControlService {
         guard settings.agentControlEnabled else {
             if lastDisabledHint.map({ Date().timeIntervalSince($0) > 60 }) ?? true {
                 lastDisabledHint = Date()
-                HUD.show("\(client.title) quiere usar ShotDock: actívalo en Preferencias › Agentes", symbol: "terminal", for: .seconds(4))
+                HUD.show(String(localized: "\(client.title) wants to use ShotDock: turn it on in Preferences › Agents"), symbol: "terminal", for: .seconds(4))
             }
             throw RPCError(code: RPCError.notAuthorizedCode,
-                           message: "Agent control is off. Turn it on in ShotDock › Preferencias › Agentes.")
+                           message: "Agent control is off. Turn it on in ShotDock › Preferences › Agents.")
         }
         if let index = settings.approvedAgents.firstIndex(where: { $0.id == client.id }) {
             // Remember when it was last used, at most once a minute.
@@ -142,13 +142,13 @@ enum AgentApproval {
     static func ask(_ client: AgentClient) async -> Bool {
         NSApp.activate()
         let alert = NSAlert()
-        alert.messageText = "¿Permitir que «\(client.title)» controle ShotDock?"
-        alert.informativeText = """
-            Podrá hacer capturas de pantalla, editarlas, leer y borrar el historial, subir imágenes y cambiar \
-            las preferencias. Puedes retirarle el permiso en Preferencias › Agentes.
-            """
-        alert.addButton(withTitle: "Permitir")
-        alert.addButton(withTitle: "No permitir")
+        alert.messageText = String(localized: "Allow “\(client.title)” to control ShotDock?")
+        alert.informativeText = String(localized: """
+            It will be able to take screenshots, edit them, read and delete the history, upload images and change \
+            the preferences. You can take the permission back in Preferences › Agents.
+            """)
+        alert.addButton(withTitle: String(localized: "Allow"))
+        alert.addButton(withTitle: String(localized: "Don't Allow"))
         alert.icon = NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)
         return alert.runModal() == .alertFirstButtonReturn
     }

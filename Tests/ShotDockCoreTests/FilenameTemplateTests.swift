@@ -6,7 +6,7 @@ private let utc = TimeZone(identifier: "UTC")!
 private let date = Date(timeIntervalSince1970: 1_764_064_720)  // 2025-11-25 09:58:40 UTC
 
 @Test func defaultTemplate() {
-    #expect(FilenameTemplate().name(for: date, timeZone: utc) == "ShotDock 2025-11-25 a las 09.58.40")
+    #expect(FilenameTemplate().name(for: date, timeZone: utc) == "ShotDock 2025-11-25 at 09.58.40")
 }
 
 @Test func customTokensAndSanitizing() {
@@ -14,8 +14,13 @@ private let date = Date(timeIntervalSince1970: 1_764_064_720)  // 2025-11-25 09:
     #expect(template.name(for: date, counter: 7, timeZone: utc) == "2025-11-25 09.58.40 #7")
 }
 
+@Test func englishAndSpanishTokensBothWork() {
+    #expect(FilenameTemplate("{date} {time} {year}{month}{day}").name(for: date, timeZone: utc) == "2025-11-25 09.58.40 20251125")
+    #expect(FilenameTemplate("{fecha}_{hora}").name(for: date, timeZone: utc) == "2025-11-25_09.58.40")
+}
+
 @Test func emptyTemplateFallsBack() {
-    #expect(FilenameTemplate("  ").name(for: date, timeZone: utc) == "ShotDock 2025-11-25 a las 09.58.40")
+    #expect(FilenameTemplate("  ").name(for: date, timeZone: utc) == "ShotDock 2025-11-25 at 09.58.40")
 }
 
 @Test func uniqueURLAddsSuffix() {

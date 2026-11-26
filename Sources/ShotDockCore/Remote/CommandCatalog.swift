@@ -157,7 +157,7 @@ public enum CommandCatalog {
                 target,
                 ParamSpec("original", .boolean, "Leave the edits out: the capture as it was taken"),
             ], mcp: "history_duplicate", returnsImage: true),
-        CommandSpec("history.gallery", "Show the history window (Capturas recientes)", mcp: "show_gallery"),
+        CommandSpec("history.gallery", "Show the history window (Recent Captures)", mcp: "show_gallery"),
     ]
 
     // MARK: Editing
@@ -325,7 +325,7 @@ public enum CommandCatalog {
             ParamSpec("all", .boolean, "Close them all"),
         ], mcp: "close_pins"),
         CommandSpec("upload", "Upload a capture, as edited, to S3 and return the link", details: """
-            Uses the bucket set in Preferencias › Subida (or `shotdock prefs set s3.…`). The link is public or
+            Uses the bucket set in Preferences › Upload (or `shotdock prefs set s3.…`). The link is public or
             presigned, as configured.
             """, params: [
                 editTarget,

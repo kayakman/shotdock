@@ -276,7 +276,7 @@ enum RemoteFiles {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             prune()
             // No spaces: agents paste these paths into shell commands.
-            let base = FilenameTemplate("shotdock-{año}{mes}{día}-{h}{min}{s}").name(for: date)
+            let base = FilenameTemplate("shotdock-{year}{month}{day}-{h}{min}{s}").name(for: date)
             var candidate = folder.appendingPathComponent(base).appendingPathExtension(format.fileExtension)
             var counter = 2
             while FileManager.default.fileExists(atPath: candidate.path) {

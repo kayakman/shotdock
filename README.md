@@ -31,7 +31,8 @@ A macOS app for taking and managing screenshots, with everything Shottr does.
 - Menu bar app, configurable global shortcuts (Shottr's can be imported), preferences,
   configurable file name and save folder, launch at login.
 
-The app's interface is in Spanish.
+The interface is in English and Spanish: it follows the system language, or the one chosen in
+Preferences › General › Language.
 
 ## Requirements
 
@@ -49,7 +50,13 @@ make selftest TEST=…  # checks in the real app: capture, area, editor, modes, 
 make selftest-upload  # upload against a local S3 (scripts/mock-s3.py)
 make selftest-cli     # the CLI and MCP with the real binary: cli, mcp, cli-history, cli-edit,
                       # cli-inspect, cli-share, cli-prefs, cli-redact, cli-capture
+make selftest-l10n    # the interface in English and in Spanish
+make strings          # adds new UI strings to Resources/Localizable.xcstrings
 ```
+
+UI strings are written in English in the code (SwiftUI literals and `String(localized:)`).
+`make strings` extracts them with the compiler into `Resources/Localizable.xcstrings`, where
+the Spanish translation lives; `make test` fails if a string has no Spanish value.
 
 The stable local signature makes macOS keep the Screen Recording permission across builds.
 The first time, grant it in System Settings › Privacy & Security › Screen Recording.
@@ -149,6 +156,8 @@ shotdock schema                                     # every command, as JSON
 - `Sources/ShotDock`: the menu bar app (AppKit + SwiftUI, ScreenCaptureKit, Vision); in
   `Remote/`, what answers the CLI.
 - `Resources/Info.plist`: the bundle's plist (`app.shotdock.ShotDock`).
+- `Resources/Localizable.xcstrings`: the Spanish translation; `Resources/*.lproj`: localized
+  Info.plist strings.
 - `Resources/Assets.xcassets`: AppIcon, menu bar icon, logo and accent colour (#FF5A1F).
 - `design/`: approved design (`icono.png`, `logo.png`) and its vector sources. `make icons`
   regenerates the icons from `design/make-icons.swift`; `swift design/make-logo.swift` makes

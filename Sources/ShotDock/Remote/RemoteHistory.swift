@@ -100,7 +100,7 @@ enum RemoteHistory {
                 copy.resize = edited.resize
                 copy.backdrop = edited.backdrop
             }
-            guard let id = store.add(copy) else { throw RPCError.notFound("The history is off (Preferencias › Historial)") }
+            guard let id = store.add(copy) else { throw RPCError.notFound("The history is off (Preferences › History)") }
             return try RemoteDocuments.result(id, copy, extra: ["source": .string(source.uuidString)])
         },
         "history.gallery": { _, _ in

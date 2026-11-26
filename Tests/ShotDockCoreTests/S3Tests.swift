@@ -71,6 +71,6 @@ private func signature(_ request: URLRequest) -> String? {
     let response = HTTPURLResponse(url: URL(string: "https://x")!, statusCode: 403, httpVersion: nil, headerFields: nil)!
     #expect(throws: S3Error.self) { try S3Client.check(response, body) }
     do { try S3Client.check(response, body) } catch {
-        #expect(error.localizedDescription == "El servidor respondió 403 (AccessDenied: Access Denied).")
+        #expect(error.localizedDescription == "The server answered 403 (AccessDenied: Access Denied).")
     }
 }

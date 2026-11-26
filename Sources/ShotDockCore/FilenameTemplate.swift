@@ -1,10 +1,12 @@
 import Foundation
 
 /// File names from a template with tokens:
-/// {fecha} 2026-11-25 · {hora} 10.58.40 · {año} {mes} {día} {h} {min} {s} · {n} counter.
+/// {date} 2026-11-25 · {time} 10.58.40 · {year} {month} {day} {h} {min} {s} · {n} counter.
+/// The Spanish names ({fecha} {hora} {año} {mes} {día}) work too.
 public struct FilenameTemplate: Sendable {
-    public static let defaultTemplate = "ShotDock {fecha} a las {hora}"
-    public static let tokens = ["{fecha}", "{hora}", "{año}", "{mes}", "{día}", "{h}", "{min}", "{s}", "{n}"]
+    /// In the app's language: "ShotDock {date} at {time}", "ShotDock {fecha} a las {hora}".
+    public static var defaultTemplate: String { String(localized: "ShotDock {date} at {time}") }
+    public static let tokens = ["{date}", "{time}", "{year}", "{month}", "{day}", "{h}", "{min}", "{s}", "{n}"]
 
     public var template: String
 
@@ -17,11 +19,13 @@ public struct FilenameTemplate: Sendable {
         calendar.timeZone = timeZone
         let c = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
         let two = { (v: Int?) in String(format: "%02d", v ?? 0) }
+        let day = "\(c.year ?? 0)-\(two(c.month))-\(two(c.day))"
+        let time = "\(two(c.hour)).\(two(c.minute)).\(two(c.second))"
         let values: [String: String] = [
+            "{year}": String(c.year ?? 0), "{month}": two(c.month), "{day}": two(c.day),
             "{año}": String(c.year ?? 0), "{mes}": two(c.month), "{día}": two(c.day),
             "{h}": two(c.hour), "{min}": two(c.minute), "{s}": two(c.second),
-            "{fecha}": "\(c.year ?? 0)-\(two(c.month))-\(two(c.day))",
-            "{hora}": "\(two(c.hour)).\(two(c.minute)).\(two(c.second))",
+            "{date}": day, "{time}": time, "{fecha}": day, "{hora}": time,
             "{n}": String(counter),
         ]
         var name = template

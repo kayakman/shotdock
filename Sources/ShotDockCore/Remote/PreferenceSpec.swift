@@ -64,12 +64,13 @@ public struct PreferenceSpec: Sendable {
 
 public enum Preferences {
     public static let all: [PreferenceSpec] = [
+        PreferenceSpec("language", .choice(["system", "en", "es"]), "Language of the interface; applies when ShotDock restarts"),
         PreferenceSpec("copy_after_capture", .boolean, "Copy each capture to the clipboard (captures from the menu and shortcuts)"),
         PreferenceSpec("open_editor_after_capture", .boolean, "Open the editor after each capture"),
         PreferenceSpec("save_after_capture", .boolean, "Save each capture in the folder"),
         PreferenceSpec("upload_after_capture", .boolean, "Upload each capture and copy the link"),
         PreferenceSpec("save_folder", .path, "Folder where captures are saved"),
-        PreferenceSpec("filename_template", .text, "File name: {fecha} {hora} {año} {mes} {día} {h} {min} {s} {n}"),
+        PreferenceSpec("filename_template", .text, "File name: {date} {time} {year} {month} {day} {h} {min} {s} {n} (or {fecha} {hora} {año} {mes} {día})"),
         PreferenceSpec("image_format", .choice(["png", "jpeg"]), "Format of saved and uploaded files"),
         PreferenceSpec("capture_delay", .integer(1...30), "Seconds of the delayed capture"),
         PreferenceSpec("window_shadow", .boolean, "Window captures include the shadow"),

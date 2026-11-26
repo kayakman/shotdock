@@ -311,11 +311,11 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         case let .drawing(_, annotation):
             model.add(annotation)
         case let .moving(_, original):
-            commitLiveEdit(from: original, actionName: "Mover")
+            commitLiveEdit(from: original, actionName: String(localized: "Move"))
         case let .resizing(_, original):
-            commitLiveEdit(from: original, actionName: "Cambiar tamaño")
+            commitLiveEdit(from: original, actionName: String(localized: "Change Size"))
         case let .movingPart(_, original, _):
-            commitLiveEdit(from: original, actionName: "Mover")
+            commitLiveEdit(from: original, actionName: String(localized: "Move"))
         case let .magnifying(_, rect):
             let document = model.document
             let magnifier = Annotation.magnifier(source: rect.integral, round: model.magnifierRound, within: document.visibleRect,
@@ -329,11 +329,11 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             if rect.width >= 2 || rect.height >= 2 {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString("\(Int(rect.width)) × \(Int(rect.height))", forType: .string)
-                model.flash("Copiado \(Int(rect.width)) × \(Int(rect.height)) px")
+                model.flash(String(localized: "Copied \(Int(rect.width)) × \(Int(rect.height)) px"))
             } else if let m = Measure.edges(in: model.document.image, at: start) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString("\(m.width) × \(m.height)", forType: .string)
-                model.flash("Copiado \(m.width) × \(m.height) px")
+                model.flash(String(localized: "Copied \(m.width) × \(m.height) px"))
             }
         case nil:
             break
@@ -442,7 +442,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         annotation.shape = .text(origin: origin, string: field.stringValue)
         field.removeFromSuperview()
         if model.document.annotations.contains(where: { $0.id == annotation.id }) {
-            model.replace(annotation, actionName: "Editar texto")
+            model.replace(annotation, actionName: String(localized: "Edit Text"))
         } else {
             model.add(annotation)
         }

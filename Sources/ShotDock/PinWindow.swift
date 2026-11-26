@@ -93,7 +93,7 @@ final class PinWindowController: NSWindowController, NSWindowDelegate {
 
     func copyImage() {
         Pasteboard.copy(image, scale: scale)
-        HUD.show("Copiado", symbol: "checkmark.circle.fill")
+        HUD.show(String(localized: "Copied"), symbol: "checkmark.circle.fill")
     }
 
     func windowDidResize(_ notification: Notification) {
@@ -105,7 +105,7 @@ final class PinWindowController: NSWindowController, NSWindowDelegate {
 
     func menu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Copiar", action: #selector(menuCopy), keyEquivalent: "c").target = self
+        menu.addItem(withTitle: String(localized: "Copy"), action: #selector(menuCopy), keyEquivalent: "c").target = self
         let opacityMenu = NSMenu()
         for percent in [100, 75, 50, 25] {
             let item = NSMenuItem(title: "\(percent) %", action: #selector(menuOpacity(_:)), keyEquivalent: "")
@@ -114,7 +114,7 @@ final class PinWindowController: NSWindowController, NSWindowDelegate {
             item.state = abs(opacity * 100 - CGFloat(percent)) < 5 ? .on : .off
             opacityMenu.addItem(item)
         }
-        menu.addItem(withTitle: "Opacidad", action: nil, keyEquivalent: "").submenu = opacityMenu
+        menu.addItem(withTitle: String(localized: "Opacity"), action: nil, keyEquivalent: "").submenu = opacityMenu
         let zoomMenu = NSMenu()
         for percent in [50, 100, 200] {
             let item = NSMenuItem(title: "\(percent) %", action: #selector(menuZoom(_:)), keyEquivalent: "")
@@ -123,10 +123,10 @@ final class PinWindowController: NSWindowController, NSWindowDelegate {
             item.state = abs(zoom * 100 - CGFloat(percent)) < 2 ? .on : .off
             zoomMenu.addItem(item)
         }
-        menu.addItem(withTitle: "Zoom", action: nil, keyEquivalent: "").submenu = zoomMenu
-        menu.addItem(withTitle: "Dejar pasar los clics", action: #selector(menuClickThrough), keyEquivalent: "").target = self
+        menu.addItem(withTitle: String(localized: "Zoom"), action: nil, keyEquivalent: "").submenu = zoomMenu
+        menu.addItem(withTitle: String(localized: "Let Clicks Through"), action: #selector(menuClickThrough), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Cerrar", action: #selector(menuClose), keyEquivalent: "").target = self
+        menu.addItem(withTitle: String(localized: "Close"), action: #selector(menuClose), keyEquivalent: "").target = self
         return menu
     }
 
@@ -135,7 +135,7 @@ final class PinWindowController: NSWindowController, NSWindowDelegate {
     @objc private func menuZoom(_ sender: NSMenuItem) { setZoom(CGFloat(sender.tag) / 100) }
     @objc private func menuClickThrough() {
         clickThrough = true
-        HUD.show("Los clics atraviesan la imagen. Recupérala desde el menú de ShotDock.", symbol: "cursorarrow.motionlines")
+        HUD.show(String(localized: "Clicks go through the image. Get it back from the ShotDock menu."), symbol: "cursorarrow.motionlines")
     }
     @objc private func menuClose() { close() }
 }

@@ -83,9 +83,9 @@ final class RecorderButton: NSButton {
 
     private func refresh() {
         if recording {
-            title = "Pulsa el atajo…"
+            title = String(localized: "Press the shortcut…")
         } else {
-            title = combo.map(KeyComboFormatter.string) ?? "Sin atajo"
+            title = combo.map(KeyComboFormatter.string) ?? String(localized: "No shortcut")
         }
         contentTintColor = recording ? .controlAccentColor : (combo == nil ? .secondaryLabelColor : nil)
     }

@@ -244,12 +244,12 @@ final class CaptureCoordinator {
     func finish(_ document: CaptureDocument) {
         let itemID = LibraryStore.shared.add(document)
         var done: [String] = []
-        if settings.copyAfterCapture, Pasteboard.copy(document.image, scale: document.scale) { done.append("Copiado") }
+        if settings.copyAfterCapture, Pasteboard.copy(document.image, scale: document.scale) { done.append(String(localized: "Copied")) }
         if settings.saveAfterCapture {
             do {
                 let url = try save(document.image, scale: document.scale, date: document.createdAt)
                 if let itemID { LibraryStore.shared.markSaved(itemID, at: url) }
-                done.append("Guardado en \(url.deletingLastPathComponent().lastPathComponent)")
+                done.append(String(localized: "Saved in \(url.deletingLastPathComponent().lastPathComponent)"))
             } catch {
                 showError(error)
             }
@@ -278,7 +278,7 @@ final class CaptureCoordinator {
     func recognize(_ image: CGImage) {
         purpose = .capture
         // The first OCR after installing can take a while (Vision loads its models).
-        HUD.show("Reconociendo texto…", symbol: "text.viewfinder", for: .seconds(60))
+        HUD.show(String(localized: "Recognizing text…"), symbol: "text.viewfinder", for: .seconds(60))
         Task {
             do {
                 let result = try await TextRecognition.recognize(image)
@@ -288,14 +288,14 @@ final class CaptureCoordinator {
                 if let code = result.codes.first {
                     pasteboard.clearContents()
                     pasteboard.setString(code, forType: .string)
-                    HUD.show("Código QR copiado: \(code.prefix(60))", symbol: "qrcode", for: .seconds(2.5))
+                    HUD.show(String(localized: "QR code copied: \(String(code.prefix(60)))"), symbol: "qrcode", for: .seconds(2.5))
                 } else if !result.lines.isEmpty {
                     let text = result.text(joinLines: settings.ocrJoinLines)
                     pasteboard.clearContents()
                     pasteboard.setString(text, forType: .string)
-                    HUD.show("Texto copiado (\(text.count) caracteres)", symbol: "text.viewfinder")
+                    HUD.show(String(localized: "Text copied (\(text.count) characters)"), symbol: "text.viewfinder")
                 } else {
-                    HUD.show("No se ha encontrado texto", symbol: "exclamationmark.triangle")
+                    HUD.show(String(localized: "No text found"), symbol: "exclamationmark.triangle")
                 }
             } catch {
                 HUD.hide()
@@ -326,7 +326,7 @@ final class CaptureCoordinator {
         let text = settings.colorFormat.string(for: color)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-        HUD.show("Copiado \(text)", symbol: "eyedropper")
+        HUD.show(String(localized: "Copied \(text)"), symbol: "eyedropper")
     }
 
     @discardableResult
@@ -360,10 +360,10 @@ final class CaptureCoordinator {
         ScreenCapturer.requestPermission()
         NSApp.activate()
         let alert = NSAlert()
-        alert.messageText = "ShotDock necesita permiso de Grabación de pantalla"
-        alert.informativeText = "Actívalo en Ajustes del Sistema › Privacidad y seguridad › Grabación de pantalla y vuelve a intentarlo."
-        alert.addButton(withTitle: "Abrir Ajustes")
-        alert.addButton(withTitle: "Cancelar")
+        alert.messageText = String(localized: "ShotDock needs the Screen Recording permission")
+        alert.informativeText = String(localized: "Turn it on in System Settings › Privacy & Security › Screen Recording and try again.")
+        alert.addButton(withTitle: String(localized: "Open Settings"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         if alert.runModal() == .alertFirstButtonReturn {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
         }

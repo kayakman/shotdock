@@ -42,7 +42,7 @@ enum RemoteSharing {
             guard let image = document.flattened() else { throw RPCError.internalError("Cannot draw the capture") }
             guard Uploader.isConfigured else {
                 throw RPCError(code: RPCError.notConfiguredCode,
-                               message: "Uploads are not set up: Preferencias › Subida, or `shotdock prefs set s3.bucket …` and `shotdock s3 credentials`")
+                               message: "Uploads are not set up: Preferences › Upload, or `shotdock prefs set s3.bucket …` and `shotdock s3 credentials`")
             }
             let copy = params["copy"]?.boolValue == true
             let link = try await Uploader.upload(image, scale: document.exportScale, date: document.createdAt, libraryItem: id,
@@ -51,7 +51,7 @@ enum RemoteSharing {
         },
         "upload.test": { _, _ in
             guard Uploader.isConfigured else {
-                throw RPCError(code: RPCError.notConfiguredCode, message: "Uploads are not set up (Preferencias › Subida)")
+                throw RPCError(code: RPCError.notConfiguredCode, message: "Uploads are not set up (Preferences › Upload)")
             }
             let key = try await Uploader.testConnection()
             return ["ok": true, "key": .string(key)]

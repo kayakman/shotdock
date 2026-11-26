@@ -25,7 +25,7 @@ enum Uploader {
         let data = try ImageEncoding.data(from: image, format: format, scale: scale)
         let base = FilenameTemplate(settings.filenameTemplate).name(for: date)
         let key = s3.configuration.key(for: UploadNaming.objectName(base: base, format: format))
-        if !quiet { HUD.show("Subiendo…", symbol: "icloud.and.arrow.up", for: .seconds(120)) }
+        if !quiet { HUD.show(String(localized: "Uploading…"), symbol: "icloud.and.arrow.up", for: .seconds(120)) }
         do {
             try await s3.putObject(key: key, data: data, contentType: format == .png ? "image/png" : "image/jpeg")
         } catch {
@@ -41,14 +41,14 @@ enum Uploader {
             NSPasteboard.general.setString(link.absoluteString, forType: .string)
         }
         if let libraryItem { LibraryStore.shared.markUploaded(libraryItem, link: link) }
-        if !quiet { HUD.show(copyLink ? "Enlace copiado" : "Subido", symbol: "link", for: .seconds(2)) }
+        if !quiet { HUD.show(copyLink ? String(localized: "Link copied") : String(localized: "Uploaded"), symbol: "link", for: .seconds(2)) }
         return link
     }
 
     /// Uploads a tiny file and deletes it, to check the settings.
     static func testConnection() async throws -> String {
         let s3 = try client()
-        let key = s3.configuration.key(for: "shotdock-prueba-\(UploadNaming.randomToken()).txt")
+        let key = s3.configuration.key(for: "shotdock-test-\(UploadNaming.randomToken()).txt")
         try await s3.putObject(key: key, data: Data("ShotDock".utf8), contentType: "text/plain")
         try await s3.deleteObject(key: key)
         return key

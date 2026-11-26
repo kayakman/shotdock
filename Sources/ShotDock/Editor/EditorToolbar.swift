@@ -19,10 +19,10 @@ struct EditorToolbar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Picker("Herramienta", selection: $model.tool) {
+            Picker("Tool", selection: $model.tool) {
                 ForEach(EditorTool.allCases) { tool in
                     Image(systemName: tool.symbol)
-                        .help("\(tool.title) (\(tool.key.uppercased()))")
+                        .help(Text(verbatim: "\(tool.title) (\(tool.key.uppercased()))"))
                         .tag(tool)
                 }
             }
@@ -34,29 +34,29 @@ struct EditorToolbar: View {
                 ForEach(RGBAColor.palette, id: \.self) { color in
                     ColorSwatch(color: color, selected: color == model.color) { model.color = color }
                 }
-                ColorPicker("Otro color", selection: customColor, supportsOpacity: false)
+                ColorPicker("Other color", selection: customColor, supportsOpacity: false)
                     .labelsHidden()
-                    .help("Otro color")
+                    .help("Other color")
             }
             .disabled(!model.tool.usesColor)
             .opacity(model.tool.usesColor ? 1 : 0.35)
 
             if model.showsMagnifierOptions {
-                Picker("Forma", selection: $model.magnifierRound) {
-                    Image(systemName: "circle").help("Círculo").tag(true)
-                    Image(systemName: "square").help("Rectángulo").tag(false)
+                Picker("Shape", selection: $model.magnifierRound) {
+                    Image(systemName: "circle").help("Circle").tag(true)
+                    Image(systemName: "square").help("Rectangle").tag(false)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
             }
 
-            Picker(model.tool.usesColor ? "Grosor" : "Intensidad", selection: $model.weight) {
+            Picker(model.tool.usesColor ? "Weight" : "Strength", selection: $model.weight) {
                 ForEach(LineWeight.allCases) { Text($0.title).tag($0) }
             }
             .labelsHidden()
             .fixedSize()
-            .help(model.tool.usesColor ? "Grosor y tamaño de letra" : "Intensidad del efecto")
+            .help(model.tool.usesColor ? "Line weight and text size" : "Strength of the effect")
 
             Spacer(minLength: 8)
 
@@ -70,41 +70,41 @@ struct EditorToolbar: View {
             Button(action: onBackdrop) {
                 Image(systemName: model.backdrop == nil ? "rectangle.inset.filled" : "rectangle.inset.filled.on.rectangle")
             }
-            .help("Fondo y marco para compartir (⌘B)")
+            .help("Backdrop and frame for sharing (⌘B)")
 
             Button(action: onRecognize) {
                 Image(systemName: "text.viewfinder")
             }
-            .help("Reconocer texto y códigos QR")
+            .help("Recognize text and QR codes")
 
             Button(action: onUpload) {
                 Image(systemName: "icloud.and.arrow.up")
             }
-            .help("Subir y copiar el enlace (⌘U)")
+            .help("Upload and copy the link (⌘U)")
 
             Button(action: onPin) {
                 Image(systemName: "pin")
             }
-            .help("Fijar encima de todo (⌘P)")
+            .help("Pin on top (⌘P)")
 
             Button {
                 model.undoManager.undo()
             } label: {
                 Image(systemName: "arrow.uturn.backward")
             }
-            .help("Deshacer (⌘Z)")
+            .help("Undo (⌘Z)")
 
             Button {
                 model.copyToClipboard()
             } label: {
-                Label("Copiar", systemImage: "doc.on.doc")
+                Label("Copy", systemImage: "doc.on.doc")
             }
-            .help("Copiar al portapapeles (⌘C)")
+            .help("Copy to the clipboard (⌘C)")
 
             Button(action: onSave) {
-                Label("Guardar", systemImage: "square.and.arrow.down")
+                Label("Save", systemImage: "square.and.arrow.down")
             }
-            .help("Guardar en la carpeta de Preferencias (⌘S). Guardar como… con ⇧⌘S")
+            .help("Save to the folder set in Preferences (⌘S). Save as… with ⇧⌘S")
         }
         .controlSize(.regular)
         .padding(.horizontal, 12)

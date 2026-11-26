@@ -36,7 +36,7 @@ struct AboutView: View {
     private var version: String {
         let short = info["CFBundleShortVersionString"] as? String ?? "?"
         let build = info["CFBundleVersion"] as? String ?? "?"
-        return "Versión \(short) (\(build))"
+        return String(localized: "Version \(short) (\(build))")
     }
 
     var body: some View {
@@ -46,8 +46,8 @@ struct AboutView: View {
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 300)
-                .accessibilityLabel("ShotDock")
-            Text("Capturas de pantalla, anotaciones y tu dock de capturas recientes.")
+                .accessibilityLabel(Text(verbatim: "ShotDock"))
+            Text("Screenshots, annotations and your dock of recent captures.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

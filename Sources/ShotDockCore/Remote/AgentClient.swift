@@ -20,10 +20,10 @@ public struct AgentClient: Codable, Equatable, Sendable, Identifiable {
         id = [agent.lowercased(), appBundleID ?? appName ?? ""].joined(separator: "|")
     }
 
-    /// "claude en Terminal".
+    /// "claude in Terminal" ("claude en Terminal").
     public var title: String {
         guard let appName, appName.caseInsensitiveCompare(agent) != .orderedSame else { return agent }
-        return "\(agent) en \(appName)"
+        return String(localized: "\(agent) in \(appName)")
     }
 
     /// One process of the chain that started `shotdock`.

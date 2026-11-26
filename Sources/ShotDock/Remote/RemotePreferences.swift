@@ -58,6 +58,7 @@ enum RemotePreferences {
     static func value(_ key: String) -> JSONValue {
         let s3 = settings.s3
         switch key {
+        case "language": return .string(settings.language.rawValue)
         case "copy_after_capture": return .bool(settings.copyAfterCapture)
         case "open_editor_after_capture": return .bool(settings.openEditorAfterCapture)
         case "save_after_capture": return .bool(settings.saveAfterCapture)
@@ -93,6 +94,7 @@ enum RemotePreferences {
     static func set(_ key: String, _ value: JSONValue) throws {
         let bool = value.boolValue ?? false, int = value.intValue ?? 0, text = value.stringValue ?? ""
         switch key {
+        case "language": settings.language = AppLanguage(rawValue: text) ?? .system
         case "copy_after_capture": settings.copyAfterCapture = bool
         case "open_editor_after_capture": settings.openEditorAfterCapture = bool
         case "save_after_capture": settings.saveAfterCapture = bool

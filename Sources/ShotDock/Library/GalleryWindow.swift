@@ -11,7 +11,7 @@ final class GalleryWindowController: NSWindowController, NSWindowDelegate {
     init(store: LibraryStore, coordinator: CaptureCoordinator) {
         let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 900, height: 620),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "Capturas recientes"
+        window.title = String(localized: "Recent Captures")
         window.isReleasedWhenClosed = false
         window.contentMinSize = NSSize(width: 520, height: 360)
         super.init(window: window)
@@ -62,7 +62,7 @@ struct GalleryActions {
     func copy(_ id: UUID) {
         guard let document = store.document(id), let image = document.flattened() else { return }
         Pasteboard.copy(image, scale: document.exportScale)
-        HUD.show("Copiado", symbol: "checkmark.circle.fill")
+        HUD.show(String(localized: "Copied"), symbol: "checkmark.circle.fill")
     }
 
     func save(_ id: UUID) {
@@ -70,7 +70,7 @@ struct GalleryActions {
         do {
             let url = try coordinator.save(image, scale: document.exportScale, date: document.createdAt)
             store.markSaved(id, at: url)
-            HUD.show("Guardado en \(url.deletingLastPathComponent().lastPathComponent)", symbol: "checkmark.circle.fill")
+            HUD.show(String(localized: "Saved in \(url.deletingLastPathComponent().lastPathComponent)"), symbol: "checkmark.circle.fill")
         } catch {
             NSAlert(error: error).runModal()
         }
@@ -86,7 +86,7 @@ struct GalleryActions {
         guard let link = item.uploadedURL else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(link, forType: .string)
-        HUD.show("Enlace copiado", symbol: "link")
+        HUD.show(String(localized: "Link copied"), symbol: "link")
     }
 
     func pin(_ id: UUID) {
@@ -111,10 +111,10 @@ struct GalleryActions {
 
     func deleteAll() {
         let alert = NSAlert()
-        alert.messageText = "¿Vaciar el historial?"
-        alert.informativeText = "Se borrarán las \(store.items.count) capturas del historial. Los ficheros que hayas guardado no se tocan."
-        alert.addButton(withTitle: "Vaciar")
-        alert.addButton(withTitle: "Cancelar")
+        alert.messageText = String(localized: "Empty the history?")
+        alert.informativeText = String(localized: "The \(store.items.count) captures in the history will be deleted. Files you saved are not touched.")
+        alert.addButton(withTitle: String(localized: "Empty"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.buttons.first?.hasDestructiveAction = true
         guard let window = window() else { return }
         alert.beginSheetModal(for: window) { response in
@@ -139,9 +139,9 @@ struct GalleryView: View {
         Group {
             if store.items.isEmpty {
                 ContentUnavailableView {
-                    Label("Sin capturas", systemImage: "photo.on.rectangle.angled")
+                    Label("No Captures", systemImage: "photo.on.rectangle.angled")
                 } description: {
-                    Text(store.isEnabled ? "Las capturas que hagas aparecerán aquí." : "El historial está desactivado en Preferencias.")
+                    Text(store.isEnabled ? "Your captures will show up here." : "The history is off in Preferences.")
                 }
             } else {
                 ScrollView {
@@ -163,17 +163,17 @@ struct GalleryView: View {
         }
         .toolbar {
             ToolbarItemGroup {
-                Button("Abrir", systemImage: "pencil.and.outline") { actions.open(state.selection) }
+                Button("Open", systemImage: "pencil.and.outline") { actions.open(state.selection) }
                     .disabled(state.selection.isEmpty)
-                    .help("Abrir en el editor (↩)")
-                Button("Copiar", systemImage: "doc.on.doc") { state.selection.first.map(actions.copy) }
+                    .help("Open in the editor (↩)")
+                Button("Copy", systemImage: "doc.on.doc") { state.selection.first.map(actions.copy) }
                     .disabled(state.selection.count != 1)
-                    .help("Copiar al portapapeles (⌘C)")
-                Button("Eliminar", systemImage: "trash") { actions.delete(state.selection); state.selection = [] }
+                    .help("Copy to the clipboard (⌘C)")
+                Button("Delete", systemImage: "trash") { actions.delete(state.selection); state.selection = [] }
                     .disabled(state.selection.isEmpty)
-                    .help("Eliminar del historial (⌫)")
-                Menu("Más", systemImage: "ellipsis.circle") {
-                    Button("Vaciar historial…", role: .destructive) { actions.deleteAll() }
+                    .help("Delete from the history (⌫)")
+                Menu("More", systemImage: "ellipsis.circle") {
+                    Button("Empty History…", role: .destructive) { actions.deleteAll() }
                         .disabled(store.items.isEmpty)
                 }
             }
@@ -202,20 +202,20 @@ struct GalleryView: View {
 
     @ViewBuilder
     private func menu(for item: CaptureItem) -> some View {
-        Button("Abrir en el editor") { actions.open([item.id]) }
-        Button("Copiar") { actions.copy(item.id) }
-        Button("Guardar en la carpeta") { actions.save(item.id) }
-        Button("Subir y copiar enlace") { actions.upload(item.id) }
+        Button("Open in the Editor") { actions.open([item.id]) }
+        Button("Copy") { actions.copy(item.id) }
+        Button("Save to the Folder") { actions.save(item.id) }
+        Button("Upload and Copy Link") { actions.upload(item.id) }
         if item.uploadedURL != nil {
-            Button("Copiar enlace") { actions.copyLink(item) }
+            Button("Copy Link") { actions.copyLink(item) }
         }
-        Button("Fijar encima de todo") { actions.pin(item.id) }
-        Button("Reconocer texto") { actions.recognize(item.id) }
+        Button("Pin on Top") { actions.pin(item.id) }
+        Button("Recognize Text") { actions.recognize(item.id) }
         if item.savedPath != nil {
-            Button("Mostrar en el Finder") { actions.revealSaved(item) }
+            Button("Show in Finder") { actions.revealSaved(item) }
         }
         Divider()
-        Button("Eliminar", role: .destructive) {
+        Button("Delete", role: .destructive) {
             let ids = state.selection.contains(item.id) ? state.selection : [item.id]
             actions.delete(ids)
             state.selection.subtract(ids)
@@ -253,16 +253,16 @@ private struct GalleryCell: View {
                     .lineLimit(1)
                 Spacer(minLength: 4)
                 if item.savedPath != nil {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.secondary).help("Guardada")
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.secondary).help("Saved to a file")
                 }
                 if item.uploadedURL != nil {
-                    Image(systemName: "link").foregroundStyle(.secondary).help("Subida")
+                    Image(systemName: "link").foregroundStyle(.secondary).help("Uploaded to S3")
                 }
                 if item.annotationCount > 0 {
-                    Image(systemName: "pencil.tip.crop.circle").foregroundStyle(.secondary).help("Con anotaciones")
+                    Image(systemName: "pencil.tip.crop.circle").foregroundStyle(.secondary).help("With annotations")
                 }
             }
-            Text("\(item.pixelWidth) × \(item.pixelHeight) px · \(item.createdAt.formatted(date: .abbreviated, time: .shortened))")
+            Text(verbatim: "\(item.pixelWidth) × \(item.pixelHeight) px · \(item.createdAt.formatted(date: .abbreviated, time: .shortened))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

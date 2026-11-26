@@ -1,0 +1,3004 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ""
+          }
+        }
+      }
+    },
+    "%@ in %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ in %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ en %@"
+          }
+        }
+      }
+    },
+    "%@ wants to use ShotDock: turn it on in Preferences › Agents": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ quiere usar ShotDock: actívalo en Preferencias › Agentes"
+          }
+        }
+      }
+    },
+    "%lld px · %lld parts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld px · %2$lld parts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld px · %lld tramos"
+          }
+        }
+      }
+    },
+    "%lld s": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld s"
+          }
+        }
+      }
+    },
+    "%lld secrets hidden": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld secretos ocultos"
+          }
+        }
+      }
+    },
+    "1 day": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 día"
+          }
+        }
+      }
+    },
+    "1 hour": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 hora"
+          }
+        }
+      }
+    },
+    "1 secret hidden": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 secreto oculto"
+          }
+        }
+      }
+    },
+    "7 days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 días"
+          }
+        }
+      }
+    },
+    "About ShotDock": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acerca de ShotDock"
+          }
+        }
+      }
+    },
+    "Access key ID:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access key ID:"
+          }
+        }
+      }
+    },
+    "Actual Size": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamaño real"
+          }
+        }
+      }
+    },
+    "Add Backdrop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir fondo"
+          }
+        }
+      }
+    },
+    "After capturing:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Después de capturar:"
+          }
+        }
+      }
+    },
+    "Agents": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agentes"
+          }
+        }
+      }
+    },
+    "Agents:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agentes:"
+          }
+        }
+      }
+    },
+    "All of them": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas"
+          }
+        }
+      }
+    },
+    "Allow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir"
+          }
+        }
+      }
+    },
+    "Allow the CLI and AI agents to control ShotDock": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir que la CLI y los agentes de IA controlen ShotDock"
+          }
+        }
+      }
+    },
+    "Allow “%@” to control ShotDock?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Permitir que «%@» controle ShotDock?"
+          }
+        }
+      }
+    },
+    "Allowed on %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitido el %@"
+          }
+        }
+      }
+    },
+    "Allowed:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con permiso:"
+          }
+        }
+      }
+    },
+    "Annotate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anotar"
+          }
+        }
+      }
+    },
+    "Annotate (%lld)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anotar (%lld)"
+          }
+        }
+      }
+    },
+    "Arrow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flecha"
+          }
+        }
+      }
+    },
+    "Aspect Ratio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proporción"
+          }
+        }
+      }
+    },
+    "Auto": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto"
+          }
+        }
+      }
+    },
+    "Automatic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automática"
+          }
+        }
+      }
+    },
+    "Backdrop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fondo"
+          }
+        }
+      }
+    },
+    "Backdrop and frame": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fondo y marco"
+          }
+        }
+      }
+    },
+    "Backdrop and frame for sharing (⌘B)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fondo y marco para compartir (⌘B)"
+          }
+        }
+      }
+    },
+    "Blur": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desenfocar"
+          }
+        }
+      }
+    },
+    "Brings Shottr's shortcuts and its S3 upload settings (bucket, endpoint, region, folder and link). The S3 keys cannot be read: type them in Upload.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trae los atajos de Shottr y su configuración de subida a S3 (bucket, endpoint, región, carpeta y enlace). Las claves de S3 no se pueden leer: escríbelas en Subida."
+          }
+        }
+      }
+    },
+    "Bucket in the path (path-style; R2 and MinIO)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket en la ruta (path-style; R2 y MinIO)"
+          }
+        }
+      }
+    },
+    "Bucket:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bucket:"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        }
+      }
+    },
+    "Capture": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura"
+          }
+        }
+      }
+    },
+    "Capture Area": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar área"
+          }
+        }
+      }
+    },
+    "Capture active window": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar ventana activa"
+          }
+        }
+      }
+    },
+    "Capture area": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar área"
+          }
+        }
+      }
+    },
+    "Capture full screen": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar pantalla completa"
+          }
+        }
+      }
+    },
+    "Capture window (pick)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar ventana (elegir)"
+          }
+        }
+      }
+    },
+    "Change": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar"
+          }
+        }
+      }
+    },
+    "Change Backdrop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar fondo"
+          }
+        }
+      }
+    },
+    "Change Magnifier Shape": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar forma de la lupa"
+          }
+        }
+      }
+    },
+    "Change Size": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar tamaño"
+          }
+        }
+      }
+    },
+    "Change Style": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar estilo"
+          }
+        }
+      }
+    },
+    "Choose": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir…"
+          }
+        }
+      }
+    },
+    "Circle": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Círculo"
+          }
+        }
+      }
+    },
+    "Click a shortcut and press the new combination. ⌫ removes it, Esc cancels. A combination can only have one use: if another shortcut had it, it loses it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz clic en un atajo y pulsa la nueva combinación. ⌫ lo quita, Esc cancela. Una combinación solo puede tener un uso: si ya lo tenía otro atajo, se le quita."
+          }
+        }
+      }
+    },
+    "Clicks go through the image. Get it back from the ShotDock menu.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los clics atraviesan la imagen. Recupérala desde el menú de ShotDock."
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
+          }
+        }
+      }
+    },
+    "Close pinned images (%lld)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar las imágenes fijadas (%lld)"
+          }
+        }
+      }
+    },
+    "Color Picker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuentagotas"
+          }
+        }
+      }
+    },
+    "Color picker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuentagotas de color"
+          }
+        }
+      }
+    },
+    "Color picker:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuentagotas:"
+          }
+        }
+      }
+    },
+    "Connection works: test file uploaded and deleted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexión correcta: subida y borrado de prueba"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado"
+          }
+        }
+      }
+    },
+    "Copied %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado %@"
+          }
+        }
+      }
+    },
+    "Copied %lld × %lld px": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Copied %1$lld × %2$lld px"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiado %lld × %lld px"
+          }
+        }
+      }
+    },
+    "Copy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
+        }
+      }
+    },
+    "Copy Link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar enlace"
+          }
+        }
+      }
+    },
+    "Copy Text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar texto"
+          }
+        }
+      }
+    },
+    "Copy and close": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar y cerrar"
+          }
+        }
+      }
+    },
+    "Copy the command for Claude Code": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar la orden para Claude Code"
+          }
+        }
+      }
+    },
+    "Copy to the clipboard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar al portapapeles"
+          }
+        }
+      }
+    },
+    "Copy to the clipboard (⌘C)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar al portapapeles (⌘C)"
+          }
+        }
+      }
+    },
+    "Corners": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esquinas"
+          }
+        }
+      }
+    },
+    "Could not change the login item": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cambiar el inicio de sesión"
+          }
+        }
+      }
+    },
+    "Could not create the link. In the terminal:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo crear el enlace. En la terminal:"
+          }
+        }
+      }
+    },
+    "Could not read Shottr's settings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer la configuración de Shottr"
+          }
+        }
+      }
+    },
+    "Could not read the text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer el texto"
+          }
+        }
+      }
+    },
+    "Crop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recortar"
+          }
+        }
+      }
+    },
+    "Custom": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personalizado"
+          }
+        }
+      }
+    },
+    "Cut": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cortar"
+          }
+        }
+      }
+    },
+    "Delay:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retardo:"
+          }
+        }
+      }
+    },
+    "Delayed capture": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturar con retardo"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        }
+      }
+    },
+    "Delete from the history (⌫)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar del historial (⌫)"
+          }
+        }
+      }
+    },
+    "Don't Allow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No permitir"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminar"
+          }
+        }
+      }
+    },
+    "Each capture is kept with its annotations, which stay editable from Recent captures. Files you save in your folder are not touched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada captura se guarda con sus anotaciones, que se pueden seguir editando desde Capturas recientes. Los ficheros que guardes en tu carpeta no se tocan."
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edición"
+          }
+        }
+      }
+    },
+    "Edit Text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar texto"
+          }
+        }
+      }
+    },
+    "Empty": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaciar"
+          }
+        }
+      }
+    },
+    "Empty History…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaciar historial…"
+          }
+        }
+      }
+    },
+    "Empty history…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaciar historial…"
+          }
+        }
+      }
+    },
+    "Empty the history?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Vaciar el historial?"
+          }
+        }
+      }
+    },
+    "Endpoint:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint:"
+          }
+        }
+      }
+    },
+    "Example: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejemplo: %@"
+          }
+        }
+      }
+    },
+    "Expires in:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caduca en:"
+          }
+        }
+      }
+    },
+    "File": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivo"
+          }
+        }
+      }
+    },
+    "Fill": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relleno"
+          }
+        }
+      }
+    },
+    "Folder:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carpeta:"
+          }
+        }
+      }
+    },
+    "For Claude Code: `claude mcp add shotdock -- shotdock mcp`": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para Claude Code: `claude mcp add shotdock -- shotdock mcp`"
+          }
+        }
+      }
+    },
+    "Format:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato:"
+          }
+        }
+      }
+    },
+    "Frame": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marco"
+          }
+        }
+      }
+    },
+    "From": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desde"
+          }
+        }
+      }
+    },
+    "General": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        }
+      }
+    },
+    "Global: they work from any app.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Globales: funcionan desde cualquier app."
+          }
+        }
+      }
+    },
+    "Grant the Screen Recording permission…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conceder permiso de grabación de pantalla…"
+          }
+        }
+      }
+    },
+    "Height:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alto:"
+          }
+        }
+      }
+    },
+    "Hide Secrets": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar secretos"
+          }
+        }
+      }
+    },
+    "Hide ShotDock": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar ShotDock"
+          }
+        }
+      }
+    },
+    "Highlighter": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resaltador"
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial"
+          }
+        }
+      }
+    },
+    "Image": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagen"
+          }
+        }
+      }
+    },
+    "Import": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar"
+          }
+        }
+      }
+    },
+    "Import Shottr's shortcuts?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Importar los atajos de Shottr?"
+          }
+        }
+      }
+    },
+    "Import from Shottr…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar de Shottr…"
+          }
+        }
+      }
+    },
+    "Import…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar…"
+          }
+        }
+      }
+    },
+    "In the capture editor.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En el editor de capturas."
+          }
+        }
+      }
+    },
+    "Include the shadow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluir la sombra"
+          }
+        }
+      }
+    },
+    "Install `shotdock`": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instalar `shotdock`"
+          }
+        }
+      }
+    },
+    "It will be able to take screenshots, edit them, read and delete the history, upload images and change the preferences. You can take the permission back in Preferences › Agents.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrá hacer capturas de pantalla, editarlas, leer y borrar el historial, subir imágenes y cambiar las preferencias. Puedes retirarle el permiso en Preferencias › Agentes."
+          }
+        }
+      }
+    },
+    "Join the lines into one paragraph": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unir las líneas en un párrafo"
+          }
+        }
+      }
+    },
+    "Keep:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar:"
+          }
+        }
+      }
+    },
+    "Language:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma:"
+          }
+        }
+      }
+    },
+    "Later": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más tarde"
+          }
+        }
+      }
+    },
+    "Let Clicks Through": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dejar pasar los clics"
+          }
+        }
+      }
+    },
+    "Line weight and text size": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grosor y tamaño de letra"
+          }
+        }
+      }
+    },
+    "Link copied": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enlace copiado"
+          }
+        }
+      }
+    },
+    "Link:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enlace:"
+          }
+        }
+      }
+    },
+    "Looking for secrets…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando secretos…"
+          }
+        }
+      }
+    },
+    "Magnifier": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lupa"
+          }
+        }
+      }
+    },
+    "Make pinned images clickable again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a poder hacer clic en las imágenes fijadas"
+          }
+        }
+      }
+    },
+    "Mark as public (ACL public-read)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar como público (ACL public-read)"
+          }
+        }
+      }
+    },
+    "Medium": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medio"
+          }
+        }
+      }
+    },
+    "Minimize": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimizar"
+          }
+        }
+      }
+    },
+    "More": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más"
+          }
+        }
+      }
+    },
+    "Move": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover"
+          }
+        }
+      }
+    },
+    "Name:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre:"
+          }
+        }
+      }
+    },
+    "Needs the Accessibility permission": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesita permiso de Accesibilidad"
+          }
+        }
+      }
+    },
+    "No Captures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin capturas"
+          }
+        }
+      }
+    },
+    "No display was found.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró ninguna pantalla."
+          }
+        }
+      }
+    },
+    "No equivalent in ShotDock: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin equivalente en ShotDock: %@"
+          }
+        }
+      }
+    },
+    "No secrets found": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se han encontrado secretos"
+          }
+        }
+      }
+    },
+    "No shortcut": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin atajo"
+          }
+        }
+      }
+    },
+    "No shortcuts to import": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay atajos que importar"
+          }
+        }
+      }
+    },
+    "No text found": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha encontrado texto"
+          }
+        }
+      }
+    },
+    "No text or codes found": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha encontrado texto ni códigos"
+          }
+        }
+      }
+    },
+    "None (history off)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada (historial desactivado)"
+          }
+        }
+      }
+    },
+    "None yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguno todavía"
+          }
+        }
+      }
+    },
+    "Not Now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora no"
+          }
+        }
+      }
+    },
+    "Numbered Step": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paso numerado"
+          }
+        }
+      }
+    },
+    "OCR:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OCR:"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Opacity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opacidad"
+          }
+        }
+      }
+    },
+    "Open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir"
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Ajustes"
+          }
+        }
+      }
+    },
+    "Open ShotDock at login": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir ShotDock al iniciar sesión"
+          }
+        }
+      }
+    },
+    "Open in the Editor": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en el editor"
+          }
+        }
+      }
+    },
+    "Open in the editor (↩)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en el editor (↩)"
+          }
+        }
+      }
+    },
+    "Open recent captures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir capturas recientes"
+          }
+        }
+      }
+    },
+    "Open the editor": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir el editor"
+          }
+        }
+      }
+    },
+    "Original Size": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamaño original"
+          }
+        }
+      }
+    },
+    "Other (S3-compatible)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro (compatible con S3)"
+          }
+        }
+      }
+    },
+    "Other color": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro color"
+          }
+        }
+      }
+    },
+    "Oval": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Óvalo"
+          }
+        }
+      }
+    },
+    "Padding": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Margen"
+          }
+        }
+      }
+    },
+    "Paste": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pegar"
+          }
+        }
+      }
+    },
+    "Pin on Top": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fijar encima de todo"
+          }
+        }
+      }
+    },
+    "Pin on top": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fijar encima de todo"
+          }
+        }
+      }
+    },
+    "Pin on top (⌘P)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fijar encima de todo (⌘P)"
+          }
+        }
+      }
+    },
+    "Pixelate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pixelar"
+          }
+        }
+      }
+    },
+    "Preferences…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferencias…"
+          }
+        }
+      }
+    },
+    "Press the shortcut…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulsa el atajo…"
+          }
+        }
+      }
+    },
+    "Provider:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proveedor:"
+          }
+        }
+      }
+    },
+    "Public": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Público"
+          }
+        }
+      }
+    },
+    "Public URL:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL pública:"
+          }
+        }
+      }
+    },
+    "QR code copied: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código QR copiado: %@"
+          }
+        }
+      }
+    },
+    "Quit ShotDock": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salir de ShotDock"
+          }
+        }
+      }
+    },
+    "Recent Captures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturas recientes"
+          }
+        }
+      }
+    },
+    "Recognize Text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconocer texto"
+          }
+        }
+      }
+    },
+    "Recognize text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconocer texto"
+          }
+        }
+      }
+    },
+    "Recognize text (OCR)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconocer texto (OCR)"
+          }
+        }
+      }
+    },
+    "Recognize text and QR codes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconocer texto y códigos QR"
+          }
+        }
+      }
+    },
+    "Recognized text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto reconocido"
+          }
+        }
+      }
+    },
+    "Recognizing text…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconociendo texto…"
+          }
+        }
+      }
+    },
+    "Rectangle": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rectángulo"
+          }
+        }
+      }
+    },
+    "Redo": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rehacer"
+          }
+        }
+      }
+    },
+    "Region:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Región:"
+          }
+        }
+      }
+    },
+    "Reinstall": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a instalar"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirar"
+          }
+        }
+      }
+    },
+    "Remove Backdrop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar fondo"
+          }
+        }
+      }
+    },
+    "Remove Crop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar recorte"
+          }
+        }
+      }
+    },
+    "Repeat last area": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir última área"
+          }
+        }
+      }
+    },
+    "Reset the shortcuts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer los atajos"
+          }
+        }
+      }
+    },
+    "Resize": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redimensionar"
+          }
+        }
+      }
+    },
+    "Resize…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redimensionar…"
+          }
+        }
+      }
+    },
+    "Restart Now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reiniciar ahora"
+          }
+        }
+      }
+    },
+    "Ruler": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regla"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar"
+          }
+        }
+      }
+    },
+    "Save as…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar como…"
+          }
+        }
+      }
+    },
+    "Save keys in the keychain": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar claves en el llavero"
+          }
+        }
+      }
+    },
+    "Save to the Folder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar en la carpeta"
+          }
+        }
+      }
+    },
+    "Save to the folder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar en la carpeta"
+          }
+        }
+      }
+    },
+    "Save to the folder set in Preferences (⌘S). Save as… with ⇧⌘S": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar en la carpeta de Preferencias (⌘S). Guardar como… con ⇧⌘S"
+          }
+        }
+      }
+    },
+    "Save to:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar en:"
+          }
+        }
+      }
+    },
+    "Saved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado"
+          }
+        }
+      }
+    },
+    "Saved in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado en %@"
+          }
+        }
+      }
+    },
+    "Saved to a file": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardada en un fichero"
+          }
+        }
+      }
+    },
+    "Saved: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado: %@"
+          }
+        }
+      }
+    },
+    "Screenshots, annotations and your dock of recent captures.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capturas de pantalla, anotaciones y tu dock de capturas recientes."
+          }
+        }
+      }
+    },
+    "Scroll down": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desplázate hacia abajo"
+          }
+        }
+      }
+    },
+    "Scrolling capture": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura con scroll"
+          }
+        }
+      }
+    },
+    "Scrolling capture:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Captura con scroll:"
+          }
+        }
+      }
+    },
+    "Scrolling…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desplazando…"
+          }
+        }
+      }
+    },
+    "Secret access key:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secret access key:"
+          }
+        }
+      }
+    },
+    "Select All": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionar todo"
+          }
+        }
+      }
+    },
+    "Select “cc.ffitch.shottr.plist” and click Import to bring Shottr's shortcuts.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona «cc.ffitch.shottr.plist» y pulsa Importar para traer los atajos de Shottr."
+          }
+        }
+      }
+    },
+    "Shadow": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sombra"
+          }
+        }
+      }
+    },
+    "Shape": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forma"
+          }
+        }
+      }
+    },
+    "Shortcuts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atajos"
+          }
+        }
+      }
+    },
+    "ShotDock %@ at %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "ShotDock %1$@ at %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ShotDock %@ a las %@"
+          }
+        }
+      }
+    },
+    "ShotDock can use the same shortcuts you had in Shottr. macOS will ask you to select its settings file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ShotDock puede usar los mismos atajos que tenías en Shottr. macOS te pedirá que selecciones su fichero de configuración."
+          }
+        }
+      }
+    },
+    "ShotDock has no Screen Recording permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ShotDock no tiene permiso de Grabación de pantalla."
+          }
+        }
+      }
+    },
+    "ShotDock needs the Screen Recording permission": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ShotDock necesita permiso de Grabación de pantalla"
+          }
+        }
+      }
+    },
+    "ShotDock scrolls the page for you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ShotDock desplaza la página por ti"
+          }
+        }
+      }
+    },
+    "ShotDock {date} at {time}": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ShotDock {fecha} a las {hora}"
+          }
+        }
+      }
+    },
+    "Shottr is not installed on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shottr no está instalado en este Mac."
+          }
+        }
+      }
+    },
+    "Shottr settings imported": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuración de Shottr importada"
+          }
+        }
+      }
+    },
+    "Shottr:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shottr:"
+          }
+        }
+      }
+    },
+    "Show in Finder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar en el Finder"
+          }
+        }
+      }
+    },
+    "Show in the Dock while windows are open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar en el Dock mientras haya ventanas abiertas"
+          }
+        }
+      }
+    },
+    "Show recent captures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar capturas recientes"
+          }
+        }
+      }
+    },
+    "Signed (expires)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firmado (caduca)"
+          }
+        }
+      }
+    },
+    "Size of the image when it is copied, saved or uploaded. The original (%lld × %lld px) is kept.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Size of the image when it is copied, saved or uploaded. The original (%1$lld × %2$lld px) is kept."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamaño de la imagen al copiarla, guardarla o subirla. La original (%lld × %lld px) se conserva."
+          }
+        }
+      }
+    },
+    "Slower: the last part could not be joined": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más despacio: no se pudo unir el último tramo"
+          }
+        }
+      }
+    },
+    "Smart Eraser": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador inteligente"
+          }
+        }
+      }
+    },
+    "Space": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espacio"
+          }
+        }
+      }
+    },
+    "Startup:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicio:"
+          }
+        }
+      }
+    },
+    "Strength": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensidad"
+          }
+        }
+      }
+    },
+    "Strength of the effect": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensidad del efecto"
+          }
+        }
+      }
+    },
+    "System": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema"
+          }
+        }
+      }
+    },
+    "Terminal:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal:"
+          }
+        }
+      }
+    },
+    "Test connection": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probar conexión"
+          }
+        }
+      }
+    },
+    "Text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto"
+          }
+        }
+      }
+    },
+    "Text copied (%lld characters)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto copiado (%lld caracteres)"
+          }
+        }
+      }
+    },
+    "That file has no Shottr shortcuts set.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese fichero no tiene atajos de Shottr configurados."
+          }
+        }
+      }
+    },
+    "The %lld captures in the history will be deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se borrarán las %lld capturas del historial."
+          }
+        }
+      }
+    },
+    "The %lld captures in the history will be deleted. Files you saved are not touched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se borrarán las %lld capturas del historial. Los ficheros que hayas guardado no se tocan."
+          }
+        }
+      }
+    },
+    "The capture changed: hide the secrets again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La captura ha cambiado: vuelve a ocultar los secretos"
+          }
+        }
+      }
+    },
+    "The history is off in Preferences.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial está desactivado en Preferencias."
+          }
+        }
+      }
+    },
+    "The language changes when ShotDock restarts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El idioma cambiará al reiniciar ShotDock"
+          }
+        }
+      }
+    },
+    "The last 1,000 captures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las últimas 1000 capturas"
+          }
+        }
+      }
+    },
+    "The last 200 captures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las últimas 200 capturas"
+          }
+        }
+      }
+    },
+    "The last 50 captures": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las últimas 50 capturas"
+          }
+        }
+      }
+    },
+    "The server answered %lld (%@).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "The server answered %1$lld (%2$@)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor respondió %lld (%@)."
+          }
+        }
+      }
+    },
+    "The server answered %lld.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor respondió %lld."
+          }
+        }
+      }
+    },
+    "Thick": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grueso"
+          }
+        }
+      }
+    },
+    "Thin": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fino"
+          }
+        }
+      }
+    },
+    "To": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta"
+          }
+        }
+      }
+    },
+    "To upload, set up the Upload tab.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para subir, configura la pestaña Subida."
+          }
+        }
+      }
+    },
+    "Tokens: {date} {time} {year} {month} {day} {h} {min} {s} {n}": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcadores: {fecha} {hora} {año} {mes} {día} {h} {min} {s} {n}"
+          }
+        }
+      }
+    },
+    "Tool": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herramienta"
+          }
+        }
+      }
+    },
+    "Turn it on in System Settings › Privacy & Security › Screen Recording and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actívalo en Ajustes del Sistema › Privacidad y seguridad › Grabación de pantalla y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer"
+          }
+        }
+      }
+    },
+    "Undo (⌘Z)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer (⌘Z)"
+          }
+        }
+      }
+    },
+    "Up to 10,000 px": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta 10 000 px"
+          }
+        }
+      }
+    },
+    "Up to 20,000 px": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta 20 000 px"
+          }
+        }
+      }
+    },
+    "Up to 50,000 px": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta 50 000 px"
+          }
+        }
+      }
+    },
+    "Upload": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subida"
+          }
+        }
+      }
+    },
+    "Upload and Copy Link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir y copiar enlace"
+          }
+        }
+      }
+    },
+    "Upload and copy link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir y copiar enlace"
+          }
+        }
+      }
+    },
+    "Upload and copy the link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir y copiar el enlace"
+          }
+        }
+      }
+    },
+    "Upload and copy the link (⌘U)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir y copiar el enlace (⌘U)"
+          }
+        }
+      }
+    },
+    "Upload each capture and copy the link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir cada captura y copiar el enlace"
+          }
+        }
+      }
+    },
+    "Upload: bucket “%@” on %@. The keys cannot be read from Shottr: type them in Preferences › Upload.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Upload: bucket “%1$@” on %2$@. The keys cannot be read from Shottr: type them in Preferences › Upload."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subida: bucket «%@» en %@. Las claves no se pueden leer de Shottr: escríbelas en Preferencias › Subida."
+          }
+        }
+      }
+    },
+    "Uploaded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subido"
+          }
+        }
+      }
+    },
+    "Uploaded to S3": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subida a S3"
+          }
+        }
+      }
+    },
+    "Uploading…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subiendo…"
+          }
+        }
+      }
+    },
+    "Uploads are not set up: the bucket, the endpoint or the keys are missing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La subida no está configurada: faltan el bucket, el endpoint o las claves."
+          }
+        }
+      }
+    },
+    "Version %@ (%@)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Version %1$@ (%2$@)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versión %@ (%@)"
+          }
+        }
+      }
+    },
+    "View": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualización"
+          }
+        }
+      }
+    },
+    "Weight": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grosor"
+          }
+        }
+      }
+    },
+    "Width:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ancho:"
+          }
+        }
+      }
+    },
+    "Window": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ventana"
+          }
+        }
+      }
+    },
+    "Windows:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ventanas:"
+          }
+        }
+      }
+    },
+    "With `shotdock` in the terminal, or its MCP server in Claude Code, Codex or Cursor, an agent can capture, edit and upload images, read the history and change the preferences. The first time an agent uses it, ShotDock asks you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con `shotdock` en la terminal, o su servidor MCP en Claude Code, Codex o Cursor, un agente puede capturar, editar y subir imágenes, leer el historial y cambiar las preferencias. La primera vez que un agente lo use, ShotDock te pedirá permiso."
+          }
+        }
+      }
+    },
+    "With annotations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con anotaciones"
+          }
+        }
+      }
+    },
+    "Your captures will show up here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las capturas que hagas aparecerán aquí."
+          }
+        }
+      }
+    },
+    "Zoom": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoom"
+          }
+        }
+      }
+    },
+    "Zoom In": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ampliar"
+          }
+        }
+      }
+    },
+    "Zoom Out": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducir"
+          }
+        }
+      }
+    },
+    "`shotdock` installed in %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`shotdock` instalado en %@"
+          }
+        }
+      }
+    },
+    "`shotdock` is not in the PATH": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`shotdock` no está en el PATH"
+          }
+        }
+      }
+    },
+    "capture": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "captura"
+          }
+        }
+      }
+    },
+    "captures/": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "capturas/"
+          }
+        }
+      }
+    },
+    "https://img.example.com (optional)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://img.ejemplo.com (opcional)"
+          }
+        }
+      }
+    },
+    "last used %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "último uso %@"
+          }
+        }
+      }
+    },
+    "macOS protects other apps' settings: select “cc.ffitch.shottr.plist” in the panel that opens.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS protege la configuración de otras apps: selecciona «cc.ffitch.shottr.plist» en el panel que se abre."
+          }
+        }
+      }
+    },
+    "off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "desactivado"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -39,18 +39,18 @@ struct AgentsPreferences: View {
 
     var body: some View {
         Form {
-            LabeledContent("Agentes:") {
+            LabeledContent("Agents:") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Toggle("Permitir que la CLI y los agentes de IA controlen ShotDock", isOn: $settings.agentControlEnabled)
-                    Text("Con `shotdock` en la terminal, o su servidor MCP en Claude Code, Codex o Cursor, un agente puede capturar, editar y subir imágenes, leer el historial y cambiar las preferencias. La primera vez que un agente lo use, ShotDock te pedirá permiso.")
+                    Toggle("Allow the CLI and AI agents to control ShotDock", isOn: $settings.agentControlEnabled)
+                    Text("With `shotdock` in the terminal, or its MCP server in Claude Code, Codex or Cursor, an agent can capture, edit and upload images, read the history and change the preferences. The first time an agent uses it, ShotDock asks you.")
                         .font(.caption).foregroundStyle(.secondary).frame(maxWidth: 400, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            LabeledContent("Con permiso:") {
+            LabeledContent("Allowed:") {
                 VStack(alignment: .leading, spacing: 6) {
                     if settings.approvedAgents.isEmpty {
-                        Text("Ninguno todavía").foregroundStyle(.secondary)
+                        Text("None yet").foregroundStyle(.secondary)
                     }
                     ForEach(settings.approvedAgents) { agent in
                         HStack {
@@ -59,7 +59,7 @@ struct AgentsPreferences: View {
                                 Text(usage(agent)).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("Retirar") { settings.approvedAgents.removeAll { $0.id == agent.id } }
+                            Button("Remove") { settings.approvedAgents.removeAll { $0.id == agent.id } }
                         }
                         .frame(width: 400)
                     }
@@ -71,20 +71,20 @@ struct AgentsPreferences: View {
             LabeledContent("Terminal:") {
                 VStack(alignment: .leading, spacing: 6) {
                     if let installed {
-                        Text("`shotdock` instalado en \(installed.replacingOccurrences(of: NSHomeDirectory(), with: "~"))")
+                        Text("`shotdock` installed in \(installed.replacingOccurrences(of: NSHomeDirectory(), with: "~"))")
                     } else {
-                        Text("`shotdock` no está en el PATH").foregroundStyle(.secondary)
+                        Text("`shotdock` is not in the PATH").foregroundStyle(.secondary)
                     }
-                    Button(installed == nil ? "Instalar `shotdock`" : "Volver a instalar") {
+                    Button(installed == nil ? "Install `shotdock`" : "Reinstall") {
                         do {
                             installed = try CLIInstaller.install()
                         } catch {
-                            installError = "No se pudo crear el enlace. En la terminal:\nln -sf '\(CLIInstaller.helperURL.path)' /usr/local/bin/shotdock"
+                            installError = String(localized: "Could not create the link. In the terminal:") + "\nln -sf '\(CLIInstaller.helperURL.path)' /usr/local/bin/shotdock"
                         }
                     }
-                    Text("Para Claude Code: `claude mcp add shotdock -- shotdock mcp`")
+                    Text("For Claude Code: `claude mcp add shotdock -- shotdock mcp`")
                         .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                    Button("Copiar la orden para Claude Code") {
+                    Button("Copy the command for Claude Code") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString("claude mcp add shotdock -- \(installed == nil ? CLIInstaller.helperURL.path : "shotdock") mcp",
                                                        forType: .string)
@@ -101,8 +101,8 @@ struct AgentsPreferences: View {
 
     private func usage(_ agent: AgentClient) -> String {
         var parts: [String] = []
-        if let date = agent.approvedAt { parts.append("Permitido el \(date.formatted(date: .abbreviated, time: .omitted))") }
-        if let date = agent.lastUsed { parts.append("último uso \(date.formatted(.relative(presentation: .named)))") }
+        if let date = agent.approvedAt { parts.append(String(localized: "Allowed on \(date.formatted(date: .abbreviated, time: .omitted))")) }
+        if let date = agent.lastUsed { parts.append(String(localized: "last used \(date.formatted(.relative(presentation: .named)))")) }
         return parts.joined(separator: " · ")
     }
 }

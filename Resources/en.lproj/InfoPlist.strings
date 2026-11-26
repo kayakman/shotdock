@@ -1,0 +1,2 @@
+/* Shown by macOS when asking for the Screen Recording permission. */
+"NSScreenCaptureUsageDescription" = "ShotDock needs to record the screen to take screenshots.";

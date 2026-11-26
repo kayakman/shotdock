@@ -15,48 +15,48 @@ struct UploadPreferences: View {
 
     var body: some View {
         Form {
-            LabeledContent("Después de capturar:") {
-                Toggle("Subir cada captura y copiar el enlace", isOn: $settings.uploadAfterCapture)
+            LabeledContent("After capturing:") {
+                Toggle("Upload each capture and copy the link", isOn: $settings.uploadAfterCapture)
                     .disabled(!settings.s3.isComplete)
             }
             Divider()
-            Picker("Proveedor:", selection: provider) {
+            Picker("Provider:", selection: provider) {
                 ForEach(S3Configuration.Provider.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             .fixedSize()
-            TextField("Endpoint:", text: $settings.s3.endpoint, prompt: Text("https://s3.eu-west-1.amazonaws.com"))
-            TextField("Región:", text: $settings.s3.region)
+            TextField("Endpoint:", text: $settings.s3.endpoint, prompt: Text(verbatim: "https://s3.eu-west-1.amazonaws.com"))
+            TextField("Region:", text: $settings.s3.region)
             TextField("Bucket:", text: $settings.s3.bucket)
-            TextField("Carpeta:", text: $settings.s3.prefix, prompt: Text("capturas/"))
+            TextField("Folder:", text: $settings.s3.prefix, prompt: Text("captures/"))
             LabeledContent("") {
-                Toggle("Bucket en la ruta (path-style; R2 y MinIO)", isOn: $settings.s3.pathStyle)
+                Toggle("Bucket in the path (path-style; R2 and MinIO)", isOn: $settings.s3.pathStyle)
             }
             Divider()
             TextField("Access key ID:", text: $accessKey)
             SecureField("Secret access key:", text: $secretKey)
             LabeledContent("") {
                 HStack {
-                    Button("Guardar claves en el llavero") { saveKeys() }.disabled(accessKey.isEmpty || secretKey.isEmpty)
-                    if keysSaved { Label("Guardadas", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary) }
+                    Button("Save keys in the keychain") { saveKeys() }.disabled(accessKey.isEmpty || secretKey.isEmpty)
+                    if keysSaved { Label("Saved", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary) }
                 }
             }
             Divider()
-            Picker("Enlace:", selection: $settings.s3.linkMode) {
-                Text("Público").tag(S3Configuration.LinkMode.publicURL)
-                Text("Firmado (caduca)").tag(S3Configuration.LinkMode.presigned)
+            Picker("Link:", selection: $settings.s3.linkMode) {
+                Text("Public").tag(S3Configuration.LinkMode.publicURL)
+                Text("Signed (expires)").tag(S3Configuration.LinkMode.presigned)
             }
             .pickerStyle(.radioGroup)
             .horizontalRadioGroupLayout()
             if settings.s3.linkMode == .publicURL {
-                TextField("URL pública:", text: $settings.s3.publicBaseURL, prompt: Text("https://img.ejemplo.com (opcional)"))
+                TextField("Public URL:", text: $settings.s3.publicBaseURL, prompt: Text("https://img.example.com (optional)"))
                 LabeledContent("") {
-                    Toggle("Marcar como público (ACL public-read)", isOn: $settings.s3.publicReadACL)
+                    Toggle("Mark as public (ACL public-read)", isOn: $settings.s3.publicReadACL)
                 }
             } else {
-                Picker("Caduca en:", selection: $settings.s3.presignExpiry) {
-                    Text("1 hora").tag(3600)
-                    Text("1 día").tag(86400)
-                    Text("7 días").tag(604_800)
+                Picker("Expires in:", selection: $settings.s3.presignExpiry) {
+                    Text("1 hour").tag(3600)
+                    Text("1 day").tag(86400)
+                    Text("7 days").tag(604_800)
                 }
                 .fixedSize()
             }
@@ -68,7 +68,7 @@ struct UploadPreferences: View {
             }
             LabeledContent("") {
                 HStack {
-                    Button("Probar conexión") { test() }
+                    Button("Test connection") { test() }
                         .disabled(!settings.s3.isComplete || testState == .running)
                     switch testState {
                     case .idle: EmptyView()
@@ -92,9 +92,9 @@ struct UploadPreferences: View {
 
     private var exampleLink: String? {
         guard settings.s3.isComplete else { return nil }
-        let key = settings.s3.key(for: "shotdock-2026-11-25-a-las-10-58-40-k7x2m9qa.png")
+        let key = settings.s3.key(for: UploadNaming.objectName(base: CaptureNaming.defaultName(for: Date()), format: settings.imageFormat, random: "k7x2m9qa"))
         let url = settings.s3.linkMode == .publicURL ? settings.s3.publicLink(key: key) : settings.s3.objectURL(key: key)
-        return url.map { "Ejemplo: \($0.absoluteString)" + (settings.s3.linkMode == .presigned ? "?X-Amz-…" : "") }
+        return url.map { String(localized: "Example: \($0.absoluteString + (settings.s3.linkMode == .presigned ? "?X-Amz-…" : ""))") }
     }
 
     private func loadKeys() {
@@ -116,7 +116,7 @@ struct UploadPreferences: View {
         Task {
             do {
                 _ = try await Uploader.testConnection()
-                testState = .ok("Conexión correcta: subida y borrado de prueba")
+                testState = .ok(String(localized: "Connection works: test file uploaded and deleted"))
             } catch {
                 testState = .failed(error.localizedDescription)
             }

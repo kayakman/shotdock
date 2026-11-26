@@ -94,7 +94,7 @@ final class LibraryStore {
 
     /// A capture named the way agents do: id, id prefix, last, last-1…
     func resolve(_ reference: String) throws -> UUID {
-        guard isEnabled else { throw RPCError.notFound("The history is off (Preferencias › Historial)") }
+        guard isEnabled else { throw RPCError.notFound("The history is off (Preferences › History)") }
         return try CaptureReference.resolve(reference, in: items)
     }
 

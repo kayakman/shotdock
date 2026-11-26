@@ -15,16 +15,16 @@ public enum ShortcutAction: String, CaseIterable, Codable, CodingKeyRepresentabl
 
     public var title: String {
         switch self {
-        case .captureArea: "Capturar área"
-        case .repeatArea: "Repetir última área"
-        case .captureActiveWindow: "Capturar ventana activa"
-        case .captureWindow: "Capturar ventana (elegir)"
-        case .captureFullscreen: "Capturar pantalla completa"
-        case .captureDelayed: "Capturar con retardo"
-        case .captureScrolling: "Captura con scroll"
-        case .recognizeText: "Reconocer texto (OCR)"
-        case .pickColor: "Cuentagotas de color"
-        case .showHistory: "Mostrar capturas recientes"
+        case .captureArea: String(localized: "Capture area")
+        case .repeatArea: String(localized: "Repeat last area")
+        case .captureActiveWindow: String(localized: "Capture active window")
+        case .captureWindow: String(localized: "Capture window (pick)")
+        case .captureFullscreen: String(localized: "Capture full screen")
+        case .captureDelayed: String(localized: "Delayed capture")
+        case .captureScrolling: String(localized: "Scrolling capture")
+        case .recognizeText: String(localized: "Recognize text (OCR)")
+        case .pickColor: String(localized: "Color picker")
+        case .showHistory: String(localized: "Show recent captures")
         }
     }
 
@@ -58,13 +58,13 @@ public enum EditorAction: String, ShortcutActionType {
 
     public var title: String {
         switch self {
-        case .copyAndClose: "Copiar y cerrar"
-        case .save: "Guardar"
-        case .saveAs: "Guardar como…"
-        case .upload: "Subir y copiar enlace"
-        case .pin: "Fijar encima de todo"
-        case .backdrop: "Fondo y marco"
-        case .recognizeText: "Reconocer texto"
+        case .copyAndClose: String(localized: "Copy and close")
+        case .save: String(localized: "Save")
+        case .saveAs: String(localized: "Save as…")
+        case .upload: String(localized: "Upload and copy link")
+        case .pin: String(localized: "Pin on top")
+        case .backdrop: String(localized: "Backdrop and frame")
+        case .recognizeText: String(localized: "Recognize text")
         }
     }
 

@@ -13,11 +13,11 @@ struct BackdropInspector: View {
 
     var body: some View {
         Form {
-            Toggle("Fondo", isOn: enabled)
+            Toggle("Backdrop", isOn: enabled)
                 .toggleStyle(.switch)
                 .font(.headline)
 
-            Section("Relleno") {
+            Section("Fill") {
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(44), spacing: 8), count: 4), spacing: 8) {
                     ForEach(Array(Backdrop.presets.enumerated()), id: \.offset) { _, fill in
                         Button { set(\.fill, fill) } label: {
@@ -27,19 +27,19 @@ struct BackdropInspector: View {
                     }
                 }
                 HStack {
-                    Text("Personalizado")
+                    Text("Custom")
                     Spacer()
-                    ColorPicker("Desde", selection: colorBinding(0), supportsOpacity: false).labelsHidden()
-                    ColorPicker("Hasta", selection: colorBinding(1), supportsOpacity: false).labelsHidden()
+                    ColorPicker("From", selection: colorBinding(0), supportsOpacity: false).labelsHidden()
+                    ColorPicker("To", selection: colorBinding(1), supportsOpacity: false).labelsHidden()
                 }
             }
             .disabled(model.backdrop == nil)
 
-            Section("Marco") {
-                slider("Margen", \.padding, 0...160)
-                slider("Esquinas", \.cornerRadius, 0...40)
-                slider("Sombra", \.shadow, 0...1)
-                Picker("Proporción", selection: Binding(get: { current.aspect }, set: { set(\.aspect, $0) })) {
+            Section("Frame") {
+                slider("Padding", \.padding, 0...160)
+                slider("Corners", \.cornerRadius, 0...40)
+                slider("Shadow", \.shadow, 0...1)
+                Picker("Aspect Ratio", selection: Binding(get: { current.aspect }, set: { set(\.aspect, $0) })) {
                     ForEach(Backdrop.Aspect.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
@@ -55,7 +55,7 @@ struct BackdropInspector: View {
         model.updateBackdrop(backdrop, live: live)
     }
 
-    private func slider(_ title: String, _ keyPath: WritableKeyPath<Backdrop, CGFloat>, _ range: ClosedRange<CGFloat>) -> some View {
+    private func slider(_ title: LocalizedStringKey, _ keyPath: WritableKeyPath<Backdrop, CGFloat>, _ range: ClosedRange<CGFloat>) -> some View {
         LabeledContent(title) {
             Slider(value: Binding(get: { current[keyPath: keyPath] }, set: { set(keyPath, $0, live: true) }), in: range) { editing in
                 if !editing { model.commitBackdropEdit() }

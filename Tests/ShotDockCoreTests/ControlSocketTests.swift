@@ -83,7 +83,7 @@ private func identify(_ chain: [AgentClient.Process]) -> AgentClient {
         .init(path: "/usr/bin/login"),
         .init(path: "/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal"),
     ])
-    #expect(client.agent == "claude" && client.appName == "Terminal" && client.title == "claude en Terminal")
+    #expect(client.agent == "claude" && client.appName == "Terminal" && client.title == "claude in Terminal")
     #expect(client.id == "claude|com.apple.Terminal")
 }
 
@@ -94,7 +94,7 @@ private func identify(_ chain: [AgentClient.Process]) -> AgentClient {
         .init(path: "/Users/rick/.elias/harnesses/claude/node_modules/@anthropic-ai/claude-code/bin/claude.exe"),
         .init(path: "/Users/rick/Applications/Elias.app/Contents/Resources/elias"),
     ])
-    #expect(client.title == "claude en Elias")
+    #expect(client.title == "claude in Elias")
 }
 
 @Test func identifiesScriptsRunByAnInterpreter() {
@@ -104,7 +104,7 @@ private func identify(_ chain: [AgentClient.Process]) -> AgentClient {
         .init(path: "/bin/zsh"),
         .init(path: "/Applications/iTerm.app/Contents/MacOS/iTerm2"),
     ])
-    #expect(client.title == "codex en iTerm")
+    #expect(client.title == "codex in iTerm")
 }
 
 @Test func identifiesAppHelpersByTheirApp() {

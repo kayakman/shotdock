@@ -3,7 +3,7 @@ SIGN_IDENTITY ?= ShotDock Local Signing
 APP           := build/ShotDock.app
 BIN_DIR        = $(shell swift build -c $(CONFIG) --show-bin-path)
 
-.PHONY: build app run test selftest selftest-upload selftest-cli install signing-cert icons clean
+.PHONY: build app run test selftest selftest-upload selftest-cli selftest-l10n strings install signing-cert icons clean
 
 build:
 	swift build -c $(CONFIG)
@@ -14,6 +14,8 @@ app: build
 	cp Resources/Info.plist $(APP)/Contents/Info.plist
 	cp $(BIN_DIR)/ShotDock $(APP)/Contents/MacOS/ShotDock
 	cp $(BIN_DIR)/shotdock-cli $(APP)/Contents/Helpers/shotdock
+	cp -R Resources/en.lproj Resources/es.lproj $(APP)/Contents/Resources/
+	xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory $(APP)/Contents/Resources
 	xcrun actool Resources/Assets.xcassets --compile $(APP)/Contents/Resources \
 		--platform macosx --minimum-deployment-target 15.0 \
 		--app-icon AppIcon --accent-color AccentColor \
@@ -32,10 +34,12 @@ test:
 # Runs a non-interactive check in the real app: capture (needs the Screen
 # Recording permission), area or editor. Fails if the log has a FAIL line.
 TEST ?= capture
+# Selftests check Spanish texts; `make selftest TEST=l10n SELFTEST_LANG=en` checks English.
+SELFTEST_LANG ?= es
 selftest: app
 	-pkill -x ShotDock
 	rm -f build/selftest*.png build/selftest.log build/selftest.sock
-	open -W -n $(APP) --args --selftest $(TEST) $(CURDIR)/build/selftest.png
+	open -W -n $(APP) --args -AppleLanguages '($(SELFTEST_LANG))' --selftest $(TEST) $(CURDIR)/build/selftest.png
 	@cat build/selftest.log
 	@! grep -q '^FAIL' build/selftest.log
 
@@ -76,3 +80,19 @@ selftest-cli: app
 		grep '^FAIL' build/selftest.log | sed 's/^/    /'; \
 		grep -q '^FAIL' build/selftest.log && failed="$$failed $$t"; \
 	done; [ -z "$$failed" ] || { echo "failed:$$failed"; exit 1; }
+
+# UI strings are English in the code; Spanish lives in Resources/Localizable.xcstrings.
+# This extracts the strings the compiler sees (SwiftUI literals, String(localized:))
+# into the catalog, marking removed ones stale. Translate the new ones, then
+# `make test` checks that none is missing.
+strings:
+	rm -rf build/stringsdata .build/strings && mkdir -p build/stringsdata
+	# A clean build: an incremental one would only report the files it recompiled.
+	swift build --scratch-path .build/strings --target ShotDock \
+		-Xswiftc -emit-localized-strings -Xswiftc -emit-localized-strings-path -Xswiftc $(CURDIR)/build/stringsdata
+	xcrun xcstringstool sync Resources/Localizable.xcstrings --stringsdata build/stringsdata/*.stringsdata
+
+# The interface in English and in Spanish.
+selftest-l10n:
+	$(MAKE) --no-print-directory selftest TEST=l10n SELFTEST_LANG=en
+	$(MAKE) --no-print-directory selftest TEST=l10n SELFTEST_LANG=es

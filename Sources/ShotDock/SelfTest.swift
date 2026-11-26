@@ -56,6 +56,7 @@ final class SelfTest {
             case "cli-share": try await cliShare()
             case "cli-prefs": try await cliPrefs()
             case "cli-redact": try await cliRedact()
+            case "l10n": try await l10n()
             default: fail("unknown selftest \(name)")
             }
         } catch {

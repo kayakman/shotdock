@@ -177,18 +177,18 @@ private struct ScrollControlsView: View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.down.doc").foregroundStyle(Color.accentColor).font(.title3)
             VStack(alignment: .leading, spacing: 2) {
-                Text(state.autoScrolling ? "Desplazando…" : "Desplázate hacia abajo")
+                Text(state.autoScrolling ? "Scrolling…" : "Scroll down")
                     .font(.headline)
-                Text(state.lastWasRejected ? "Más despacio: no se pudo unir el último tramo" : "\(state.height) px · \(state.frames) tramos")
+                Text(state.lastWasRejected ? "Slower: the last part could not be joined" : "\(state.height) px · \(state.frames) parts")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(state.lastWasRejected ? .orange : .secondary)
             }
             .frame(minWidth: 190, alignment: .leading)
             Button("Auto", action: onAuto)
-                .help(state.canAutoScroll ? "ShotDock desplaza la página por ti" : "Necesita permiso de Accesibilidad")
+                .help(state.canAutoScroll ? "ShotDock scrolls the page for you" : "Needs the Accessibility permission")
                 .disabled(state.autoScrolling)
-            Button("Cancelar", action: onCancel)
-            Button("Terminar", action: onFinish).keyboardShortcut(.defaultAction)
+            Button("Cancel", action: onCancel)
+            Button("Done", action: onFinish).keyboardShortcut(.defaultAction)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

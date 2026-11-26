@@ -3,7 +3,12 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>es</string>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>ShotDock</string>
 	<key>CFBundleIconFile</key>
@@ -37,7 +42,7 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>ShotDock necesita grabar la pantalla para hacer capturas.</string>
+	<string>ShotDock needs to record the screen to take screenshots.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 The ShotDock authors</string>
 </dict>

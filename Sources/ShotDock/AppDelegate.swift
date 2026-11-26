@@ -110,19 +110,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         if !coordinator.pins.isEmpty {
             if coordinator.pins.contains(where: \.clickThrough) {
-                menu.addItem(withTitle: "Volver a poder hacer clic en las imágenes fijadas", action: #selector(restorePinClicks), keyEquivalent: "").target = self
+                menu.addItem(withTitle: String(localized: "Make pinned images clickable again"), action: #selector(restorePinClicks), keyEquivalent: "").target = self
             }
-            menu.addItem(withTitle: "Cerrar las imágenes fijadas (\(coordinator.pins.count))", action: #selector(closeAllPins), keyEquivalent: "").target = self
+            menu.addItem(withTitle: String(localized: "Close pinned images (\(coordinator.pins.count))"), action: #selector(closeAllPins), keyEquivalent: "").target = self
             menu.addItem(.separator())
         }
         if !ScreenCapturer.hasPermission {
-            menu.addItem(withTitle: "Conceder permiso de grabación de pantalla…", action: #selector(openScreenRecordingSettings), keyEquivalent: "").target = self
+            menu.addItem(withTitle: String(localized: "Grant the Screen Recording permission…"), action: #selector(openScreenRecordingSettings), keyEquivalent: "").target = self
             menu.addItem(.separator())
         }
-        menu.addItem(withTitle: "Preferencias…", action: #selector(showPreferences), keyEquivalent: ",").target = self
-        menu.addItem(withTitle: "Acerca de ShotDock", action: #selector(showAbout), keyEquivalent: "").target = self
+        menu.addItem(withTitle: String(localized: "Preferences…"), action: #selector(showPreferences), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: String(localized: "About ShotDock"), action: #selector(showAbout), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Salir de ShotDock", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: String(localized: "Quit ShotDock"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
     @objc private func performMenuAction(_ sender: NSMenuItem) {
@@ -168,10 +168,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         UserDefaults.standard.set(true, forKey: key)
         NSApp.activate()
         let alert = NSAlert()
-        alert.messageText = "¿Importar los atajos de Shottr?"
-        alert.informativeText = "ShotDock puede usar los mismos atajos que tenías en Shottr. macOS te pedirá que selecciones su fichero de configuración."
-        alert.addButton(withTitle: "Importar…")
-        alert.addButton(withTitle: "Ahora no")
+        alert.messageText = String(localized: "Import Shottr's shortcuts?")
+        alert.informativeText = String(localized: "ShotDock can use the same shortcuts you had in Shottr. macOS will ask you to select its settings file.")
+        alert.addButton(withTitle: String(localized: "Import…"))
+        alert.addButton(withTitle: String(localized: "Not Now"))
         if alert.runModal() == .alertFirstButtonReturn { ShottrImporter.run(into: .shared, parent: nil) }
     }
 }

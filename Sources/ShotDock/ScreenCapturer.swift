@@ -17,8 +17,8 @@ enum ScreenCaptureError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .permissionDenied: "ShotDock no tiene permiso de Grabación de pantalla."
-        case .noDisplays: "No se encontró ninguna pantalla."
+        case .permissionDenied: String(localized: "ShotDock has no Screen Recording permission.")
+        case .noDisplays: String(localized: "No display was found.")
         }
     }
 }

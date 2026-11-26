@@ -22,7 +22,7 @@ public final class MCPServer {
         When the screen may show secrets (keys, tokens, passwords, e-mails), capture with redact: true so \
         they are covered before the image reaches you. \
         If a tool fails with not_authorized, ask the user to turn on agent control in \
-        ShotDock › Preferencias › Agentes and to allow this client.
+        ShotDock › Preferences › Agents and to allow this client.
         """
 
     private let tools: [CommandSpec]

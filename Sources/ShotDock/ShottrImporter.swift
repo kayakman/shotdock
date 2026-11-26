@@ -12,8 +12,8 @@ enum ShottrImporter {
 
     static func run(into settings: AppSettings, parent: NSWindow?) {
         let panel = NSOpenPanel()
-        panel.message = "Selecciona «cc.ffitch.shottr.plist» y pulsa Importar para traer los atajos de Shottr."
-        panel.prompt = "Importar"
+        panel.message = String(localized: "Select “cc.ffitch.shottr.plist” and click Import to bring Shottr's shortcuts.")
+        panel.prompt = String(localized: "Import")
         panel.directoryURL = ShottrImport.preferencesURL().deletingLastPathComponent()
         panel.allowedContentTypes = [.propertyList]
         panel.showsHiddenFiles = false
@@ -33,19 +33,19 @@ enum ShottrImporter {
             let s3 = ShottrImport.s3Configuration(preferences)
             if let s3 { settings.s3 = s3 }
             guard !result.shortcuts.isEmpty || s3 != nil else {
-                alert.messageText = "No hay atajos que importar"
-                alert.informativeText = "Ese fichero no tiene atajos de Shottr configurados."
+                alert.messageText = String(localized: "No shortcuts to import")
+                alert.informativeText = String(localized: "That file has no Shottr shortcuts set.")
                 return present(alert, parent)
             }
             settings.shortcuts.apply(result)
-            alert.messageText = "Configuración de Shottr importada"
+            alert.messageText = String(localized: "Shottr settings imported")
             var text = summary(of: result)
             if let s3 {
-                text += "\n\nSubida: bucket «\(s3.bucket)» en \(s3.provider.title). Las claves no se pueden leer de Shottr: escríbelas en Preferencias › Subida."
+                text += "\n\n" + String(localized: "Upload: bucket “\(s3.bucket)” on \(s3.provider.title). The keys cannot be read from Shottr: type them in Preferences › Upload.")
             }
             alert.informativeText = text
         } catch {
-            alert.messageText = "No se pudo leer la configuración de Shottr"
+            alert.messageText = String(localized: "Could not read Shottr's settings")
             alert.informativeText = error.localizedDescription
         }
         present(alert, parent)
@@ -54,10 +54,10 @@ enum ShottrImporter {
     static func summary(of result: ShottrImport.Result) -> String {
         let lines = ShortcutAction.allCases.compactMap { action -> String? in
             guard let combo = result.shortcuts[action] else { return nil }
-            return "\(action.title): \(combo.map(KeyComboFormatter.string) ?? "desactivado")"
+            return "\(action.title): \(combo.map(KeyComboFormatter.string) ?? String(localized: "off"))"
         }
         var text = lines.joined(separator: "\n")
-        if !result.unknown.isEmpty { text += "\n\nSin equivalente en ShotDock: \(result.unknown.joined(separator: ", "))" }
+        if !result.unknown.isEmpty { text += "\n\n" + String(localized: "No equivalent in ShotDock: \(result.unknown.joined(separator: ", "))") }
         return text
     }
 

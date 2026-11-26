@@ -73,5 +73,5 @@ private let white = makeImage(width: 200, height: 100, color: (1, 1, 1))
 @Test func defaultNameFormat() {
     let date = Date(timeIntervalSince1970: 1_764_064_720)  // 2025-11-25 09:58:40 UTC
     #expect(CaptureNaming.defaultName(for: date, timeZone: TimeZone(identifier: "UTC")!)
-            == "ShotDock 2025-11-25 a las 09.58.40")
+            == "ShotDock 2025-11-25 at 09.58.40")
 }

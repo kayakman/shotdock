@@ -34,6 +34,13 @@ final class AppSettings {
     /// Show in the Dock while an editor, the gallery or the preferences are open.
     var showInDock: Bool { didSet { defaults.set(showInDock, forKey: "showInDock") } }
     var uploadAfterCapture: Bool { didSet { defaults.set(uploadAfterCapture, forKey: "uploadAfterCapture") } }
+    /// Language of the interface; applies on restart.
+    var language: AppLanguage {
+        didSet {
+            defaults.set(language.rawValue, forKey: "language")
+            AppLanguage.apply(language, to: defaults)
+        }
+    }
     /// `shotdock` and its MCP server may drive the app (off until the user turns it on).
     var agentControlEnabled: Bool { didSet { defaults.set(agentControlEnabled, forKey: "agentControlEnabled") } }
     /// Agents the user allowed, asked the first time each one connects.
@@ -65,6 +72,7 @@ final class AppSettings {
         scrollMaxHeight = defaults.object(forKey: "scrollMaxHeight") as? Int ?? 20_000
         uploadAfterCapture = defaults.object(forKey: "uploadAfterCapture") as? Bool ?? false
         agentControlEnabled = defaults.object(forKey: "agentControlEnabled") as? Bool ?? false
+        language = defaults.string(forKey: "language").flatMap(AppLanguage.init(rawValue:)) ?? .system
         approvedAgents = defaults.data(forKey: "approvedAgents").flatMap { try? JSONDecoder().decode([AgentClient].self, from: $0) } ?? []
         lastBackdrop = defaults.data(forKey: "lastBackdrop").flatMap { try? JSONDecoder().decode(Backdrop.self, from: $0) } ?? Backdrop()
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }

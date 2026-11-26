@@ -26,7 +26,7 @@ public struct Backdrop: Codable, Equatable, Sendable {
 
         public var title: String {
             switch self {
-            case .auto: "Automática"
+            case .auto: String(localized: "Automatic")
             case .square: "1:1"
             case .wide: "16:9"
             case .standard: "4:3"

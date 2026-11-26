@@ -13,7 +13,7 @@ public struct S3Configuration: Codable, Equatable, Sendable {
             case .r2: "Cloudflare R2"
             case .b2: "Backblaze B2"
             case .minio: "MinIO"
-            case .custom: "Otro (compatible con S3)"
+            case .custom: String(localized: "Other (S3-compatible)")
             }
         }
 
@@ -244,10 +244,10 @@ public enum S3Error: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .notConfigured: return "La subida no está configurada: faltan el bucket, el endpoint o las claves."
+        case .notConfigured: return String(localized: "Uploads are not set up: the bucket, the endpoint or the keys are missing.")
         case let .http(status, code, message):
             let detail = [code, message].compactMap { $0 }.joined(separator: ": ")
-            return "El servidor respondió \(status)" + (detail.isEmpty ? "." : " (\(detail)).")
+            return detail.isEmpty ? String(localized: "The server answered \(status).") : String(localized: "The server answered \(status) (\(detail)).")
         }
     }
 }
@@ -315,7 +315,7 @@ public enum UploadNaming {
         let folded = base.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "es"))
         let slug = folded.lowercased().map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()
             .split(separator: "-", omittingEmptySubsequences: true).joined(separator: "-")
-        return (slug.isEmpty ? "captura" : slug) + "-" + random + "." + format.fileExtension
+        return (slug.isEmpty ? String(localized: "capture") : slug) + "-" + random + "." + format.fileExtension
     }
 
     public static func randomToken(length: Int = 8) -> String {

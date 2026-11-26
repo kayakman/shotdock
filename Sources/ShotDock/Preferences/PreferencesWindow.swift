@@ -7,13 +7,13 @@ enum PreferencesTab: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .general: "General"
-        case .capture: "Captura"
-        case .shortcuts: "Atajos"
-        case .history: "Historial"
-        case .upload: "Subida"
-        case .agents: "Agentes"
-        case .importing: "Importar"
+        case .general: String(localized: "General")
+        case .capture: String(localized: "Capture")
+        case .shortcuts: String(localized: "Shortcuts")
+        case .history: String(localized: "History")
+        case .upload: String(localized: "Upload")
+        case .agents: String(localized: "Agents")
+        case .importing: String(localized: "Import")
         }
     }
 
@@ -103,30 +103,48 @@ private struct GeneralPane: View {
         })
     }
 
+    @State private var askRestart = false
+
+    private var language: Binding<AppLanguage> {
+        Binding(get: { settings.language }, set: { value in
+            guard value != settings.language else { return }
+            settings.language = value
+            askRestart = true
+        })
+    }
+
     var body: some View {
         Form {
-            LabeledContent("Inicio:") {
+            Picker("Language:", selection: language) {
+                ForEach(AppLanguage.allCases) { Text(verbatim: $0.title).tag($0) }
+            }
+            .fixedSize()
+            LabeledContent("Startup:") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Toggle("Abrir ShotDock al iniciar sesión", isOn: launchAtLogin)
-                    Toggle("Mostrar en el Dock mientras haya ventanas abiertas", isOn: $settings.showInDock)
+                    Toggle("Open ShotDock at login", isOn: launchAtLogin)
+                    Toggle("Show in the Dock while windows are open", isOn: $settings.showInDock)
                         .onChange(of: settings.showInDock) { DockPresence.shared.update() }
                 }
             }
-            LabeledContent("Después de capturar:") {
+            LabeledContent("After capturing:") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Toggle("Copiar al portapapeles", isOn: $settings.copyAfterCapture)
-                    Toggle("Abrir el editor", isOn: $settings.openEditorAfterCapture)
-                    Toggle("Guardar en la carpeta", isOn: $settings.saveAfterCapture)
-                    Toggle("Subir y copiar el enlace", isOn: $settings.uploadAfterCapture)
+                    Toggle("Copy to the clipboard", isOn: $settings.copyAfterCapture)
+                    Toggle("Open the editor", isOn: $settings.openEditorAfterCapture)
+                    Toggle("Save to the folder", isOn: $settings.saveAfterCapture)
+                    Toggle("Upload and copy the link", isOn: $settings.uploadAfterCapture)
                         .disabled(!settings.s3.isComplete)
                     if !settings.s3.isComplete {
-                        Text("Para subir, configura la pestaña Subida.").font(.caption).foregroundStyle(.secondary)
+                        Text("To upload, set up the Upload tab.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
         }
         .formStyle(.columns)
-        .alert("No se pudo cambiar el inicio de sesión", isPresented: Binding(get: { loginError != nil }, set: { if !$0 { loginError = nil } })) {
+        .alert("The language changes when ShotDock restarts", isPresented: $askRestart) {
+            Button("Restart Now") { AppLanguage.relaunch() }
+            Button("Later", role: .cancel) {}
+        }
+        .alert("Could not change the login item", isPresented: Binding(get: { loginError != nil }, set: { if !$0 { loginError = nil } })) {
             Button("OK") { loginError = nil }
         } message: {
             Text(loginError ?? "")
@@ -144,52 +162,52 @@ private struct CapturePane: View {
 
     var body: some View {
         Form {
-            LabeledContent("Guardar en:") {
+            LabeledContent("Save to:") {
                 HStack {
                     Text(settings.saveFolder.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
                         .lineLimit(1).truncationMode(.middle)
-                    Button("Elegir…", action: chooseFolder)
+                    Button("Choose…", action: chooseFolder)
                 }
             }
-            LabeledContent("Nombre:") {
+            LabeledContent("Name:") {
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("", text: $settings.filenameTemplate).labelsHidden()
-                    Text("\(preview)\nMarcadores: \(FilenameTemplate.tokens.joined(separator: " "))")
+                    Text(verbatim: preview + "\n" + String(localized: "Tokens: {date} {time} {year} {month} {day} {h} {min} {s} {n}"))
                         .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Picker("Formato:", selection: $settings.imageFormat) {
-                Text("PNG").tag(ImageFormat.png)
-                Text("JPEG").tag(ImageFormat.jpeg)
+            Picker("Format:", selection: $settings.imageFormat) {
+                Text(verbatim: "PNG").tag(ImageFormat.png)
+                Text(verbatim: "JPEG").tag(ImageFormat.jpeg)
             }
             .pickerStyle(.radioGroup)
             .horizontalRadioGroupLayout()
 
             Divider()
 
-            LabeledContent("Retardo:") {
+            LabeledContent("Delay:") {
                 Stepper("\(settings.captureDelay) s", value: $settings.captureDelay, in: 1...30)
             }
-            LabeledContent("Ventanas:") {
-                Toggle("Incluir la sombra", isOn: $settings.windowShadow)
+            LabeledContent("Windows:") {
+                Toggle("Include the shadow", isOn: $settings.windowShadow)
             }
-            Picker("Captura con scroll:", selection: $settings.scrollMaxHeight) {
-                Text("Hasta 10 000 px").tag(10_000)
-                Text("Hasta 20 000 px").tag(20_000)
-                Text("Hasta 50 000 px").tag(50_000)
+            Picker("Scrolling capture:", selection: $settings.scrollMaxHeight) {
+                Text("Up to 10,000 px").tag(10_000)
+                Text("Up to 20,000 px").tag(20_000)
+                Text("Up to 50,000 px").tag(50_000)
             }
             .fixedSize()
 
             Divider()
 
-            Picker("Cuentagotas:", selection: $settings.colorFormat) {
-                Text("HEX  #FF5A1F").tag(ColorFormat.hex)
-                Text("RGB  rgb(255, 90, 31)").tag(ColorFormat.rgb)
+            Picker("Color picker:", selection: $settings.colorFormat) {
+                Text(verbatim: "HEX  #FF5A1F").tag(ColorFormat.hex)
+                Text(verbatim: "RGB  rgb(255, 90, 31)").tag(ColorFormat.rgb)
             }
             .fixedSize()
-            LabeledContent("OCR:") {
-                Toggle("Unir las líneas en un párrafo", isOn: $settings.ocrJoinLines)
+            LabeledContent(String(localized: "OCR:")) {
+                Toggle("Join the lines into one paragraph", isOn: $settings.ocrJoinLines)
             }
         }
         .formStyle(.columns)
@@ -201,7 +219,7 @@ private struct CapturePane: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.directoryURL = settings.saveFolder
-        panel.prompt = "Elegir"
+        panel.prompt = String(localized: "Choose")
         let apply: (NSApplication.ModalResponse) -> Void = { response in
             if response == .OK, let url = panel.url { settings.saveFolder = url }
         }
@@ -215,14 +233,14 @@ private struct ShortcutsPane: View {
 
     var body: some View {
         Form {
-            Text("Globales: funcionan desde cualquier app.").font(.headline)
+            Text("Global: they work from any app.").font(.headline)
             ForEach(ShortcutAction.allCases, id: \.self) { action in
                 LabeledContent(action.title + ":") {
                     ShortcutRecorder(combo: globalBinding(action)) { manager.setSuspended($0) }.fixedSize()
                 }
             }
             Divider()
-            Text("En el editor de capturas.").font(.headline)
+            Text("In the capture editor.").font(.headline)
             ForEach(EditorAction.allCases, id: \.self) { action in
                 LabeledContent(action.title + ":") {
                     ShortcutRecorder(combo: editorBinding(action)) { manager.setSuspended($0) }.fixedSize()
@@ -231,9 +249,9 @@ private struct ShortcutsPane: View {
             Divider()
             LabeledContent("") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Haz clic en un atajo y pulsa la nueva combinación. ⌫ lo quita, Esc cancela. Una combinación solo puede tener un uso: si ya lo tenía otro atajo, se le quita.")
+                    Text("Click a shortcut and press the new combination. ⌫ removes it, Esc cancels. A combination can only have one use: if another shortcut had it, it loses it.")
                         .font(.caption).foregroundStyle(.secondary).frame(maxWidth: 380, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-                    Button("Restablecer los atajos") {
+                    Button("Reset the shortcuts") {
                         settings.shortcuts = ShortcutSettings()
                         settings.editorShortcuts = EditorShortcutSettings()
                     }
@@ -257,22 +275,22 @@ private struct HistoryPane: View {
 
     var body: some View {
         Form {
-            Picker("Guardar:", selection: $settings.historyLimit) {
-                Text("Las últimas 50 capturas").tag(50)
-                Text("Las últimas 200 capturas").tag(200)
-                Text("Las últimas 1000 capturas").tag(1000)
-                Text("Todas").tag(Int.max)
-                Text("Nada (historial desactivado)").tag(0)
+            Picker("Keep:", selection: $settings.historyLimit) {
+                Text("The last 50 captures").tag(50)
+                Text("The last 200 captures").tag(200)
+                Text("The last 1,000 captures").tag(1000)
+                Text("All of them").tag(Int.max)
+                Text("None (history off)").tag(0)
             }
             .fixedSize()
             .onChange(of: settings.historyLimit) { LibraryStore.shared.applyLimit() }
             LabeledContent("") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Cada captura se guarda con sus anotaciones, que se pueden seguir editando desde Capturas recientes. Los ficheros que guardes en tu carpeta no se tocan.")
+                    Text("Each capture is kept with its annotations, which stay editable from Recent captures. Files you save in your folder are not touched.")
                         .font(.caption).foregroundStyle(.secondary).frame(maxWidth: 380, alignment: .leading).fixedSize(horizontal: false, vertical: true)
                     HStack {
-                        Button("Abrir capturas recientes") { (NSApp.delegate as? AppDelegate)?.showGallery() }
-                        Button("Vaciar historial…", role: .destructive, action: confirmClear)
+                        Button("Open recent captures") { (NSApp.delegate as? AppDelegate)?.showGallery() }
+                        Button("Empty history…", role: .destructive, action: confirmClear)
                             .disabled(LibraryStore.shared.items.isEmpty)
                     }
                 }
@@ -283,10 +301,10 @@ private struct HistoryPane: View {
 
     private func confirmClear() {
         let alert = NSAlert()
-        alert.messageText = "¿Vaciar el historial?"
-        alert.informativeText = "Se borrarán las \(LibraryStore.shared.items.count) capturas del historial."
-        alert.addButton(withTitle: "Vaciar")
-        alert.addButton(withTitle: "Cancelar")
+        alert.messageText = String(localized: "Empty the history?")
+        alert.informativeText = String(localized: "The \(LibraryStore.shared.items.count) captures in the history will be deleted.")
+        alert.addButton(withTitle: String(localized: "Empty"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.buttons.first?.hasDestructiveAction = true
         if alert.runModal() == .alertFirstButtonReturn { LibraryStore.shared.deleteAll() }
     }
@@ -298,16 +316,16 @@ private struct ImportPane: View {
 
     var body: some View {
         Form {
-            LabeledContent("Shottr:") {
+            LabeledContent(String(localized: "Shottr:")) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Trae los atajos de Shottr y su configuración de subida a S3 (bucket, endpoint, región, carpeta y enlace). Las claves de S3 no se pueden leer: escríbelas en Subida.")
+                    Text("Brings Shottr's shortcuts and its S3 upload settings (bucket, endpoint, region, folder and link). The S3 keys cannot be read: type them in Upload.")
                         .frame(maxWidth: 380, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-                    Text("macOS protege la configuración de otras apps: selecciona «cc.ffitch.shottr.plist» en el panel que se abre.")
+                    Text("macOS protects other apps' settings: select “cc.ffitch.shottr.plist” in the panel that opens.")
                         .font(.caption).foregroundStyle(.secondary).frame(maxWidth: 380, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-                    Button("Importar de Shottr…") { ShottrImporter.run(into: settings, parent: window()) }
+                    Button("Import from Shottr…") { ShottrImporter.run(into: settings, parent: window()) }
                         .disabled(!ShottrImporter.isShottrInstalled)
                     if !ShottrImporter.isShottrInstalled {
-                        Text("Shottr no está instalado en este Mac.").font(.caption).foregroundStyle(.secondary)
+                        Text("Shottr is not installed on this Mac.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }

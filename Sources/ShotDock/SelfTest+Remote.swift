@@ -719,3 +719,43 @@ extension SelfTest {
         editor.close()
     }
 }
+
+extension SelfTest {
+    /// The interface in the language the app was launched with (-AppleLanguages).
+    func l10n() async throws {
+        let language = AppLanguage.running
+        note("running in \(language.rawValue); localizations: \(Bundle.main.localizations.sorted())")
+        check(Set(Bundle.main.localizations).isSuperset(of: ["en", "es"]), "the bundle has English and Spanish")
+        let spanish = language == .es
+        let menus = NSApp.mainMenu?.items.map(\.title) ?? []
+        let expectedMenus = spanish ? ["ShotDock", "Archivo", "Edición", "Imagen", "Visualización", "Ventana"]
+            : ["ShotDock", "File", "Edit", "Image", "View", "Window"]
+        check(menus == expectedMenus, "main menu (\(menus))")
+        let tabs = PreferencesTab.allCases.map(\.title)
+        let expectedTabs = spanish ? ["General", "Captura", "Atajos", "Historial", "Subida", "Agentes", "Importar"]
+            : ["General", "Capture", "Shortcuts", "History", "Upload", "Agents", "Import"]
+        check(tabs == expectedTabs, "preferences tabs (\(tabs))")
+        check(ShortcutAction.captureArea.title == (spanish ? "Capturar área" : "Capture area"), "shortcut titles from Core")
+        check(FilenameTemplate.defaultTemplate == (spanish ? "ShotDock {fecha} a las {hora}" : "ShotDock {date} at {time}"), "default file name")
+        check(EditorTool.magnifier.title == (spanish ? "Lupa" : "Magnifier"), "editor tools")
+        let date = Date(timeIntervalSince1970: 1_764_064_720)
+        let name = CaptureNaming.defaultName(for: date, timeZone: TimeZone(identifier: "UTC")!)
+        check(name == (spanish ? "ShotDock 2025-11-25 a las 09.58.40" : "ShotDock 2025-11-25 at 09.58.40"), "window title of a capture (\(name))")
+        check(String(localized: "Close pinned images (\(3))") == (spanish ? "Cerrar las imágenes fijadas (3)" : "Close pinned images (3)"), "formats with numbers")
+
+        app.showPreferences()
+        try await Task.sleep(for: .milliseconds(500))
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "preferences" }) {
+            for tab in [PreferencesTab.general, .capture, .agents] {
+                app.openPreferences(tab: tab)
+                try await Task.sleep(for: .milliseconds(400))
+                try await snapshot(window, to: sibling("\(language.rawValue)-\(tab.rawValue)"))
+            }
+            window.close()
+        }
+        let editor = app.coordinator.openEditor(with: CaptureDocument(image: Self.testPattern(width: 1000, height: 600, text: "ShotDock"), scale: 2))
+        try await Task.sleep(for: .milliseconds(500))
+        if let window = editor.window { try await snapshot(window, to: sibling("\(language.rawValue)-editor")) }
+        editor.close()
+    }
+}

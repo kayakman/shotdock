@@ -16,7 +16,7 @@ struct RecognitionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(result.isEmpty ? "No se ha encontrado texto ni códigos" : "Texto reconocido")
+            Text(result.isEmpty ? "No text or codes found" : "Recognized text")
                 .font(.headline)
             if !result.lines.isEmpty {
                 TextEditor(text: $text)
@@ -32,18 +32,18 @@ struct RecognitionView: View {
                     Text(code).lineLimit(2).textSelection(.enabled)
                     Spacer()
                     if let url = URL(string: code), url.scheme?.hasPrefix("http") == true {
-                        Button("Abrir") { NSWorkspace.shared.open(url) }
+                        Button("Open") { NSWorkspace.shared.open(url) }
                     }
-                    Button("Copiar") { copy(code) }
+                    Button("Copy") { copy(code) }
                 }
                 .padding(8)
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
             }
             HStack {
                 Spacer()
-                Button("Cerrar", action: onClose).keyboardShortcut(.cancelAction)
+                Button("Close", action: onClose).keyboardShortcut(.cancelAction)
                 if !result.lines.isEmpty {
-                    Button("Copiar texto") { copy(text); onClose() }.keyboardShortcut(.defaultAction)
+                    Button("Copy Text") { copy(text); onClose() }.keyboardShortcut(.defaultAction)
                 }
             }
         }
