@@ -3,7 +3,7 @@ SIGN_IDENTITY ?= ShotDock Local Signing
 APP           := build/ShotDock.app
 BIN_DIR        = $(shell swift build -c $(CONFIG) --show-bin-path)
 
-.PHONY: build app run test selftest selftest-upload selftest-cli selftest-l10n strings install signing-cert icons clean
+.PHONY: build app run test selftest selftest-upload selftest-cli selftest-l10n readme-screenshots strings install signing-cert icons clean
 
 build:
 	swift build -c $(CONFIG)
@@ -96,3 +96,7 @@ strings:
 selftest-l10n:
 	$(MAKE) --no-print-directory selftest TEST=l10n SELFTEST_LANG=en
 	$(MAKE) --no-print-directory selftest TEST=l10n SELFTEST_LANG=es
+
+# The README's screenshots (docs/screenshots), in English, of ShotDock's own windows.
+readme-screenshots:
+	$(MAKE) --no-print-directory selftest TEST=readme SELFTEST_LANG=en

@@ -58,6 +58,7 @@ final class SelfTest {
             case "cli-redact": try await cliRedact()
             case "l10n": try await l10n()
             case "cli-formats": try await cliFormats()
+            case "readme": try await readme()
             default: fail("unknown selftest \(name)")
             }
         } catch {

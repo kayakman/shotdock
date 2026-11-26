@@ -9,6 +9,8 @@
 
 A macOS app for taking and managing screenshots, with everything Shottr does.
 
+<p align="center"><img src="docs/screenshots/framed.png" alt="An annotated capture on a backdrop" width="720"></p>
+
 ## Features
 
 - **Captures**: area (over the frozen screen, with a loupe), window (picked or the active
@@ -37,6 +39,27 @@ A macOS app for taking and managing screenshots, with everything Shottr does.
 The interface is in English and Spanish: it follows the system language, or the one chosen in
 Preferences › General › Language.
 
+## Screenshots
+
+**Editor**: arrows, boxes, numbered steps, highlighter, text and a magnifier, all editable later.
+
+![Editor](docs/screenshots/editor.png)
+
+**Backdrop and frame** for sharing.
+
+![Backdrop and frame](docs/screenshots/backdrop.png)
+
+**Recent captures**: the history, with annotations still editable.
+
+![Recent captures](docs/screenshots/gallery.png)
+
+**Export profiles** for saving, uploading and dragging, and **agent control** for the CLI and MCP.
+
+<p>
+  <img src="docs/screenshots/export-profiles.png" alt="Export profiles" width="49%">
+  <img src="docs/screenshots/agents.png" alt="Agents" width="49%">
+</p>
+
 ## Requirements
 
 - macOS 15 or later, Xcode 16+ (tested with Xcode 27.2 on macOS 27).
@@ -54,6 +77,7 @@ make selftest-upload  # upload against a local S3 (scripts/mock-s3.py)
 make selftest-cli     # the CLI and MCP with the real binary: cli, mcp, cli-history, cli-edit,
                       # cli-inspect, cli-share, cli-prefs, cli-redact, cli-formats, cli-capture
 make selftest-l10n    # the interface in English and in Spanish
+make readme-screenshots  # regenerates docs/screenshots from ShotDock's own windows
 make strings          # adds new UI strings to Resources/Localizable.xcstrings
 ```
 

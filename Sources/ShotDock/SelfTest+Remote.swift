@@ -1,4 +1,5 @@
 import AppKit
+import ScreenCaptureKit
 import ShotDockCore
 
 /// Selftests of the CLI and MCP: the real `shotdock` binary from the bundle
@@ -828,5 +829,103 @@ extension SelfTest {
             try await snapshot(window, to: sibling("export"))
             window.close()
         }
+    }
+}
+
+extension SelfTest {
+    /// Screenshots for the README (run in English: `make readme-screenshots`).
+    /// ShotDock's own windows are the subject, so nothing private is captured.
+    func readme() async throws {
+        let docs = output.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("docs/screenshots", isDirectory: true)
+        try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+        guard ScreenCapturer.hasPermission, (try? await ScreenCapturer.snapshotAllDisplays()) != nil else {
+            return fail("needs the Screen Recording permission and an unlocked screen")
+        }
+        func capture(_ window: NSWindow) async throws -> CGImage {
+            let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+            guard let scWindow = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
+                throw ScreenCaptureError.noDisplays
+            }
+            return try await ScreenCapturer.capture(window: scWindow, shadow: false).image
+        }
+        func save(_ image: CGImage, _ name: String) throws {
+            try ImageEncoding.write(image, to: docs.appendingPathComponent(name + ".png"), scale: 2)
+            note("wrote docs/screenshots/\(name).png (\(image.width)×\(image.height))")
+        }
+
+        // Subjects: the preferences, in English.
+        app.showPreferences()
+        try await Task.sleep(for: .milliseconds(600))
+        guard let preferences = NSApp.windows.first(where: { $0.identifier?.rawValue == "preferences" }) else { return fail("no preferences") }
+        var shots: [PreferencesTab: CGImage] = [:]
+        for tab in [PreferencesTab.general, .export, .agents, .capture] {
+            app.openPreferences(tab: tab)
+            try await Task.sleep(for: .milliseconds(500))
+            shots[tab] = try await capture(preferences)
+        }
+        try save(shots[.export]!, "export-profiles")
+        try save(shots[.agents]!, "agents")
+        preferences.close()
+
+        // The editor: the General tab, annotated where its texts are.
+        let base = shots[.general]!
+        var document = CaptureDocument(image: base, scale: 2)
+        let view = DocumentView(document)
+        func box(_ text: String) async throws -> CGRect {
+            guard let found = try await TextRecognition.recognize(base, find: text).matches.first else { throw RPCError.notFound(text) }
+            return found
+        }
+        let size = CGSize(width: base.width, height: base.height)
+        var marks: [JSONValue] = []
+        marks.append(AnnotationCoding.placing(["type": "rectangle", "color": "#FF5A1F"], on: try await box("System"), imageSize: size, scale: 2))
+        marks.append(AnnotationCoding.placing(["type": "arrow", "color": "#FF5A1F"], on: try await box("Language"), imageSize: size, scale: 2))
+        // Steps to the right of their option, clear of the labels column.
+        for option in ["Open ShotDock at login", "Copy to the clipboard", "Save to the folder"] {
+            let found = try await box(option)
+            marks.append(["type": "step", "at": JSONValue(CGPoint(x: found.maxX + 34, y: found.midY))])
+        }
+        marks.append(AnnotationCoding.placing(["type": "highlight"], on: try await box("Show in the Dock while windows are open"), imageSize: size, scale: 2))
+        let languageBox = try await box("Language")
+        marks.append(["type": "text", "text": "Pick a language", "color": "#FF5A1F",
+                      "at": JSONValue(CGPoint(x: languageBox.maxX + 560, y: languageBox.minY - 50))])
+        var nextStep = 1
+        for mark in marks {
+            let annotation = try AnnotationCoding.annotation(from: mark, for: document, view: view, nextStep: nextStep)
+            if case let .step(_, n) = annotation.shape { nextStep = n + 1 }
+            document.annotations.append(annotation)
+        }
+        // The Export tab (icon and label) enlarged in the empty space on the right.
+        let exportTab = try await box("Export")
+        let source = CGRect(x: exportTab.midX - 44, y: exportTab.minY - 62, width: 88, height: exportTab.height + 74)
+        let lensHeight: CGFloat = 230, lensWidth = lensHeight * source.width / source.height
+        document.annotations.append(Annotation(shape: .magnifier(source: source, target: CGRect(x: CGFloat(base.width) - lensWidth - 90,
+                                                                                                  y: CGFloat(base.height) - lensHeight - 70,
+                                                                                                  width: lensWidth, height: lensHeight), round: false),
+                                               style: AnnotationStyle.standard(color: .blue, scale: 2)))
+        let editor = app.coordinator.openEditor(with: document)
+        try await Task.sleep(for: .milliseconds(800))
+        guard let editorWindow = editor.window else { return fail("no editor") }
+        try save(try await capture(editorWindow), "editor")
+
+        // Backdrop and frame, with its panel.
+        editor.toggleBackdropPanel(nil)
+        var backdrop = Backdrop(fill: Backdrop.presets[1], padding: 56, cornerRadius: 12, shadow: 0.6)
+        backdrop.aspect = .auto
+        editor.model.updateBackdrop(backdrop)
+        try await Task.sleep(for: .milliseconds(800))
+        try save(try await capture(editorWindow), "backdrop")
+        if let framed = editor.model.flattened() { try save(framed, "framed") }
+
+        // The gallery with a few captures.
+        for (index, image) in [shots[.capture]!, shots[.agents]!, shots[.export]!, base].enumerated() {
+            var item = CaptureDocument(image: image, scale: 2, createdAt: Date(timeIntervalSinceNow: Double(index - 5) * 600))
+            if index == 3 { item = editor.model.document }
+            _ = LibraryStore.shared.add(item)
+        }
+        editor.close()
+        app.showGallery()
+        app.gallery?.window?.setContentSize(NSSize(width: 900, height: 290))
+        try await Task.sleep(for: .milliseconds(900))
+        if let gallery = app.gallery?.window { try save(try await capture(gallery), "gallery"); gallery.close() }
     }
 }
