@@ -89,6 +89,20 @@ enum RemoteHistory {
             return ["id": .string(id.uuidString), "path": .string(path), "width": .number(Double(document.image.width)),
                     "height": .number(Double(document.image.height)), "scale": .number(document.scale)]
         },
+        "history.duplicate": { params, _ in
+            let source = try store.resolve(params["target"]?.stringValue ?? "")
+            let edited = try RemoteDocuments.document(source)
+            var copy = CaptureDocument(image: edited.image, scale: edited.scale)
+            if params["original"]?.boolValue != true {
+                // New ids: an annotation id names one mark of one capture.
+                copy.annotations = edited.annotations.map { Annotation(shape: $0.shape, style: $0.style) }
+                copy.crop = edited.crop
+                copy.resize = edited.resize
+                copy.backdrop = edited.backdrop
+            }
+            guard let id = store.add(copy) else { throw RPCError.notFound("The history is off (Preferencias › Historial)") }
+            return try RemoteDocuments.result(id, copy, extra: ["source": .string(source.uuidString)])
+        },
         "history.gallery": { _, _ in
             (NSApp.delegate as? AppDelegate)?.showGallery()
             return ["opened": true]

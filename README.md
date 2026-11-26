@@ -104,12 +104,14 @@ The S3 keys are the only thing left out of MCP, so a secret never passes through
 
 ```sh
 shotdock windows --app safari                       # windows, front to back
+shotdock open preferences --tab agents && shotdock capture window --app shotdock   # ShotDock's own too
 shotdock capture window --app safari --json         # id, path, width, height, scale…
 shotdock capture area --rect 0,0,800,600 --redact   # in points; covers secrets
 shotdock capture screen --display 2 --out ~/Desktop/screen.png
 shotdock annotate arrow last --from 100,80 --to 320,200 --color blue
 shotdock annotate highlight last --on-text "Save"   # on that text, found by OCR
 shotdock annotate last --annotations @marks.json    # several at once
+shotdock history duplicate last                     # a copy to annotate another way
 shotdock crop last --rect 0,0,1200,800 && shotdock resize last --scale 0.5
 shotdock backdrop last --preset 3 --padding 32
 shotdock ocr last --json                            # text, lines and QR codes with boxes
@@ -129,6 +131,8 @@ shotdock schema                                     # every command, as JSON
 - **Silent captures.** What an agent captures goes to the history and to a file, without
   touching the clipboard, opening the editor or taking the focus, unless it asks for it with
   `--copy`, `--save`, `--upload`, `--edit` or `--pin`.
+- **Warnings.** `annotate` and `annotation update` add `warnings` when a mark is cut off at the
+  edge of the image, or a text or step is drawn over another mark or over the capture's text.
 - **Captures** are named by id (or its first characters), `last`, `last-1`…, or by the path
   of an image file, which is added to the history.
 - **`--json`** on every command. Exit codes: 0 success, 1 the command failed (`error.kind`:

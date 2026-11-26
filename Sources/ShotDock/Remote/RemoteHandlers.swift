@@ -15,16 +15,22 @@ enum RemoteHandlers {
     static let general: [String: RemoteHandler] = [
         "status": { _, context in
             let settings = AppSettings.shared
+            let approved = ControlService.shared.isApproved(context.client)
+            var control: [String: JSONValue] = [
+                "enabled": .bool(settings.agentControlEnabled),
+                "client": .string(context.client.title),
+                "approved": .bool(approved),
+            ]
+            // status itself needs no permission, so "not approved yet" is the normal first answer.
+            if settings.agentControlEnabled, !approved {
+                control["next"] = "The first other command shows the user a dialog to allow this client, and waits for the answer"
+            }
             return [
                 "version": .string(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"),
                 "app": .string(Bundle.main.bundlePath),
                 "pid": .number(Double(ProcessInfo.processInfo.processIdentifier)),
                 "permissions": ["screen_recording": .bool(ScreenCapturer.hasPermission), "accessibility": .bool(AXIsProcessTrusted())],
-                "agent_control": [
-                    "enabled": .bool(settings.agentControlEnabled),
-                    "client": .string(context.client.title),
-                    "approved": .bool(ControlService.shared.isApproved(context.client)),
-                ],
+                "agent_control": .object(control),
                 "displays": .number(Double(NSScreen.screens.count)),
                 "history": ["enabled": .bool(LibraryStore.shared.isEnabled), "count": .number(Double(LibraryStore.shared.items.count))],
             ]
@@ -109,7 +115,8 @@ enum RemoteScreens {
         }
     }
 
-    /// Normal app windows, front to back, without ShotDock's own.
+    /// Normal app windows, front to back, ShotDock's own included (its
+    /// overlays, HUD and pins float above them and are left out).
     static func windows(includeOffscreen: Bool) async throws -> [Window] {
         let content: SCShareableContent
         do {
@@ -117,7 +124,6 @@ enum RemoteScreens {
         } catch {
             throw ScreenCapturer.hasPermission ? error : ScreenCaptureError.permissionDenied
         }
-        let ownPID = ProcessInfo.processInfo.processIdentifier
         // CGWindowList knows the stacking order.
         let options: CGWindowListOption = includeOffscreen ? [.optionAll, .excludeDesktopElements] : [.optionOnScreenOnly, .excludeDesktopElements]
         let order = (CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] ?? [])
@@ -127,7 +133,7 @@ enum RemoteScreens {
         var sawFront = false
         return content.windows
             .filter { window in
-                guard let app = window.owningApplication, app.processID != ownPID else { return false }
+                guard window.owningApplication != nil else { return false }
                 return window.windowLayer == 0 && window.frame.width > 40 && window.frame.height > 40
             }
             .sorted { (rank[$0.windowID] ?? .max, $0.windowID) < (rank[$1.windowID] ?? .max, $1.windowID) }

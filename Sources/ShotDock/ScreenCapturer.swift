@@ -46,12 +46,13 @@ enum ScreenCapturer {
         return snapshot
     }
 
-    /// On-screen normal windows, front to back, excluding ShotDock's own.
+    /// On-screen normal windows, front to back. ShotDock's own count too
+    /// (editor, preferences, history); its overlays, HUD and pins float above
+    /// the normal level and are left out.
     @MainActor
     static func pickableWindows() async throws -> [WindowInfo] {
         let content = try await shareableContent()
         let byID = Dictionary(content.windows.map { ($0.windowID, $0) }, uniquingKeysWith: { a, _ in a })
-        let ownPID = ProcessInfo.processInfo.processIdentifier
         let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
         // CGWindowList gives the z-order; ScreenCaptureKit gives capturable windows.
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
@@ -59,7 +60,6 @@ enum ScreenCapturer {
             guard let number = info[kCGWindowNumber as String] as? CGWindowID,
                   let window = byID[number],
                   (info[kCGWindowLayer as String] as? Int) == 0,
-                  window.owningApplication?.processID != ownPID,
                   window.frame.width > 40, window.frame.height > 40 else { return nil }
             // Quartz window frames have a top-left origin on the primary display.
             let f = window.frame
@@ -93,14 +93,13 @@ enum ScreenCapturer {
     }
 
     /// Captures part of one display, `rect` in AppKit global coordinates.
-    /// ShotDock's own windows (border, controls) are left out.
+    /// ShotDock's floating windows (border, controls) are left out.
     @MainActor
     static func capture(rect: CGRect, displayID: CGDirectDisplayID) async throws -> CGImage {
         let content = try await shareableContent()
         guard let display = content.displays.first(where: { $0.displayID == displayID }),
               let screen = NSScreen.screens.first(where: { $0.displayID == displayID }) else { throw ScreenCaptureError.noDisplays }
-        let ownApp = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
-        let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
+        let filter = SCContentFilter(display: display, excludingWindows: ownFloatingWindows(content))
         let scale = CGFloat(filter.pointPixelScale)
         let config = SCStreamConfiguration()
         // sourceRect is in display points with a top-left origin.
@@ -111,6 +110,14 @@ enum ScreenCapturer {
         config.captureResolution = .best
         config.colorSpaceName = CGColorSpace.sRGB
         return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+    }
+
+    /// ShotDock's windows above the normal level: the selection overlay, the
+    /// HUD, pins and the scrolling capture's border. They never show in a
+    /// capture; its normal windows (editor, preferences) do, like any app's.
+    static func ownFloatingWindows(_ content: SCShareableContent) -> [SCWindow] {
+        let pid = ProcessInfo.processInfo.processIdentifier
+        return content.windows.filter { $0.owningApplication?.processID == pid && $0.windowLayer != 0 }
     }
 
     @MainActor
@@ -132,11 +139,11 @@ enum ScreenCapturer {
         }
         guard !content.displays.isEmpty else { throw ScreenCaptureError.noDisplays }
 
-        let ownApp = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
+        let hidden = ownFloatingWindows(content)
         var snapshots: [DisplaySnapshot] = []
         for display in content.displays where displayID == nil || display.displayID == displayID {
             guard let screen = NSScreen.screens.first(where: { $0.displayID == display.displayID }) else { continue }
-            let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
+            let filter = SCContentFilter(display: display, excludingWindows: hidden)
             let scale = CGFloat(filter.pointPixelScale)
             let config = SCStreamConfiguration()
             config.width = Int((filter.contentRect.width * scale).rounded())

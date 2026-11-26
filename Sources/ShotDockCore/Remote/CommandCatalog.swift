@@ -87,8 +87,9 @@ public enum CommandCatalog {
             ] + delivery, mcp: "capture_area", returnsImage: true),
         CommandSpec("capture.window", "Capture a window, without its background", details: """
             Pick it by --id (from `shotdock windows`), by --app and/or --title (loose match, the frontmost
-            matching window wins), the --active one, or let the user click it (--interactive). With no
-            choice, the active window. \(captureResult)
+            matching window wins; one in another Space if none is on screen), the --active one, or let the
+            user click it (--interactive). With no choice, the active window. ShotDock's own windows
+            (preferences, editor, history) can be captured too. \(captureResult)
             """, params: [
                 ParamSpec("id", .integer, "Window id"),
                 ParamSpec("app", .string, "App name, or part of it"),
@@ -149,6 +150,13 @@ public enum CommandCatalog {
             ParamSpec("file", .path, "Image file (PNG, JPEG, HEIC, TIFF…)", required: true, positional: true),
             ParamSpec("scale", .number, "Pixels per point (default: from the file's resolution)"),
         ], mcp: "history_import", returnsImage: true),
+        CommandSpec("history.duplicate", "Copy a capture into a new one, to edit each its own way", details: """
+            The copy keeps the annotations, crop, size and backdrop, unless --original: then only the captured
+            pixels. Returns the new capture's id and its image.
+            """, params: [
+                target,
+                ParamSpec("original", .boolean, "Leave the edits out: the capture as it was taken"),
+            ], mcp: "history_duplicate", returnsImage: true),
         CommandSpec("history.gallery", "Show the history window (Capturas recientes)", mcp: "show_gallery"),
     ]
 
@@ -189,7 +197,8 @@ public enum CommandCatalog {
             Each annotation: {"type": "arrow", "from": {"x", "y"}, "to": {…}}, rectangle/oval/highlight/blur/pixelate/erase
             with "rect", text with "at" and "text", step with "at" (numbered automatically), magnifier with "source"
             (and "lens" or "zoom"). Optional: color, weight, line_width, font_size, and on_text to place the mark on a
-            text found by OCR. \(editResult)
+            text found by OCR. \(editResult) `warnings` says when a mark is cut off at the edge, or a text or step
+            covers another mark or the capture's text.
             """, params: [
                 editTarget,
                 ParamSpec("annotations", .json(schema: ["type": "array", "items": AnnotationCoding.schema]),

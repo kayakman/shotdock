@@ -117,21 +117,21 @@ enum RemoteCapture {
         try await prepare(params)
         let id = params["id"]?.intValue
         let app = params["app"]?.stringValue, title = params["title"]?.stringValue
-        let windows = try await RemoteScreens.windows(includeOffscreen: id != nil)
+        // Off-screen windows too: one in another Space (a full-screen app in
+        // front) can still be captured, when nothing on screen matches.
+        let windows = try await RemoteScreens.windows(includeOffscreen: true)
         let target: RemoteScreens.Window?
         if let id {
             target = windows.first { Int($0.window.windowID) == id }
         } else if app != nil || title != nil {
-            target = windows.first { window in
-                window.window.isOnScreen && TextMatch.loosely(window.app, contains: app ?? "") && TextMatch.loosely(window.title, contains: title ?? "")
-            }
+            let matching = windows.filter { TextMatch.loosely($0.app, contains: app ?? "") && TextMatch.loosely($0.title, contains: title ?? "") }
+            target = matching.first { $0.window.isOnScreen } ?? matching.first
         } else {
             target = windows.first(where: \.active)
         }
         guard let target else {
             let open = windows.filter { $0.window.isOnScreen }.prefix(15).map { "\($0.window.windowID) \($0.app) — \($0.title)" }
-            throw RPCError(code: RPCError.notFoundCode, message: "No window matches. Open windows:\n" + open.joined(separator: "\n"),
-                           data: .array(windows.prefix(15).map(\.json)))
+            throw RPCError.notFound("No window matches. Open windows:\n" + open.joined(separator: "\n"))
         }
         let document = try await coordinator.windowDocument(target.window, shadow: shadow)
         return try await deliver(Captured(document: document, rect: target.frame, window: target.json), params)

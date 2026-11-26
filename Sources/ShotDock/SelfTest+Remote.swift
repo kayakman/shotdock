@@ -85,11 +85,16 @@ extension SelfTest {
 
         // Windows, filtered (needs the Screen Recording permission).
         if ScreenCapturer.hasPermission {
+            app.openPreferences(tab: .agents)
+            HUD.show("selftest", symbol: "terminal", for: .seconds(3))
+            try await Task.sleep(for: .milliseconds(500))
             run = try await shotdock(["windows", "--json"])
             let windows = run.json?["windows"]?.arrayValue ?? []
             check(run.status == 0, "windows listed (\(windows.count))")
             check(windows.allSatisfy { $0["id"]?.intValue != nil && $0["frame"]?.rect != nil }, "windows have ids and frames")
-            check(!windows.contains { $0["pid"]?.intValue == Int(ProcessInfo.processInfo.processIdentifier) }, "ShotDock's own windows left out")
+            let own = windows.filter { $0["pid"]?.intValue == Int(ProcessInfo.processInfo.processIdentifier) }
+            check(own.map { $0["title"]?.stringValue } == ["Agentes"], "ShotDock's preferences listed, its HUD not (\(own.map { $0["title"] ?? nil }))")
+            app.preferences?.close()
             if let first = windows.first, let app = first["app"]?.stringValue {
                 let filtered = try await shotdock(["windows", "--app", app.uppercased(), "--json"])
                 check(filtered.json?["windows"]?.arrayValue?.allSatisfy { $0["app"]?.stringValue == app } == true, "--app matches loosely (\(app))")
@@ -182,6 +187,16 @@ extension SelfTest {
         run = try await shotdock(["capture", "window", "--app", "NoExisteEstaApp", "--json"])
         check(run.status == 1 && run.json?["error"]?["kind"] == "not_found" && run.json?["error"]?["message"]?.stringValue?.contains("Open windows") == true,
               "no matching window lists the open ones")
+        check(run.json?["error"]?["data"] == nil, "once, without the same list again as data")
+
+        // ShotDock's own windows: its preferences, for a manual.
+        app.openPreferences(tab: .agents)
+        try await Task.sleep(for: .milliseconds(500))
+        run = try await shotdock(["capture", "window", "--app", "ShotDock", "--title", "Agentes", "--no-shadow", "--json"])
+        let prefsFrame = app.preferences?.window?.frame ?? .zero
+        check(run.status == 0 && abs(Double(run.json?["width"]?.intValue ?? 0) - prefsFrame.width * scale) <= 2 * scale,
+              "capture window of ShotDock's preferences (\(run.json?["width"] ?? nil), \(run.stderr.trimmingCharacters(in: .whitespacesAndNewlines)))")
+        app.preferences?.close()
 
         // Interactive: the user drags an area while the CLI waits.
         async let picked = shotdock(["capture", "area", "--interactive", "--json"])
@@ -416,6 +431,32 @@ extension SelfTest {
         check(run.json?["width"] == run.json?["height"], "square backdrop")
         run = try await shotdock(["backdrop", "last", "--off", "--json"])
         check(run.json?["width"] == 1000 && document().backdrop == nil, "backdrop off")
+
+        // Warnings for what an agent cannot see in its numbers.
+        run = try await shotdock(["annotate", "step", "last", "--at", "995,400", "--json"])
+        let cutOff = run.json?["warnings"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        check(run.status == 0 && cutOff.count == 1 && cutOff[0].contains("cut off"), "a step past the edge is warned about (\(cutOff))")
+        run = try await shotdock(["annotate", "text", "last", "--at", "\(Int(highlight.minX)),\(Int(highlight.minY))", "--text", "Encima", "--json"])
+        let covering = run.json?["warnings"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        check(covering.contains { $0.contains("covers text of the capture") }, "a text over the capture's text is warned about (\(covering))")
+        run = try await shotdock(["annotate", "arrow", "last", "--from", "300,500", "--to", "500,500", "--json"])
+        check(run.status == 0 && run.json?["warnings"] == nil, "no warnings when all is clear")
+        _ = try await shotdock(["annotation", "remove", "last"] + (run.json?["added"]?.arrayValue ?? []).compactMap(\.stringValue))
+        let added = document().annotations.suffix(2).map(\.id.uuidString)
+        _ = try await shotdock(["annotation", "remove", "last"] + added)
+
+        // Duplicates: with the edits, or the capture as taken.
+        let count = document().annotations.count
+        run = try await shotdock(["history", "duplicate", "last", "--json"])
+        let copy = run.json?["id"]?.stringValue ?? ""
+        check(run.status == 0 && !copy.isEmpty && copy != idText && run.json?["source"] == .string(idText)
+              && run.json?["annotation_count"]?.intValue == count, "history duplicate keeps the annotations (\(count))")
+        let copyMarks = UUID(uuidString: copy).flatMap { LibraryStore.shared.document($0) }?.annotations.map(\.id) ?? []
+        check(Set(copyMarks).isDisjoint(with: document().annotations.map(\.id)), "with ids of its own")
+        run = try await shotdock(["history", "duplicate", idText, "--original", "--json"])
+        let bare = run.json?["id"]?.stringValue ?? ""
+        check(run.status == 0 && run.json?["annotation_count"] == 0 && run.json?["width"] == 1000, "--original leaves the edits out")
+        _ = try await shotdock(["history", "delete", copy, bare])
 
         // With the editor open, changes go through it and can be undone there.
         _ = try await shotdock(["history", "open", idText])

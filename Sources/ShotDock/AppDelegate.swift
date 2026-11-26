@@ -6,7 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let coordinator = CaptureCoordinator()
     private(set) var shortcuts: ShortcutManager!
     private var statusItem: NSStatusItem?
-    private var preferences: PreferencesWindowController?
+    private(set) var preferences: PreferencesWindowController?
     private(set) var gallery: GalleryWindowController?
 
     /// Actions that already work; the rest keep their shortcut for later phases.

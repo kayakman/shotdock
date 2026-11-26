@@ -16,7 +16,7 @@ enum RemoteEditing {
             result["annotations"] = .array(document.annotations.map { AnnotationCoding.json($0, view: view) })
             return .object(result)
         },
-        "annotation.update": { params, _ in try update(params) },
+        "annotation.update": { params, _ in try await update(params) },
         "annotation.remove": { params, _ in
             let id = try RemoteDocuments.resolve(params["target"])
             let document = try RemoteDocuments.document(id)
@@ -101,7 +101,15 @@ enum RemoteEditing {
         }
         if !located.isEmpty { try RemoteDocuments.unchanged(id, since: document) }
         let edited = try RemoteDocuments.edit(id, added.count == 1 ? "Anotar" : "Anotar (\(added.count))") { $0.annotations += added }
-        return try RemoteDocuments.result(id, edited, extra: ["added": .array(added.map { .string($0.id.uuidString) })])
+        var extra: [String: JSONValue] = ["added": .array(added.map { .string($0.id.uuidString) })]
+        extra["warnings"] = await warnings(added, in: edited)
+        return try RemoteDocuments.result(id, edited, extra: extra)
+    }
+
+    /// Marks cut off at the edge, or labels over other marks or the capture's text; nil when all is well.
+    static func warnings(_ marks: [Annotation], in document: CaptureDocument) async -> JSONValue? {
+        let found = await AnnotationWarnings.check(marks, in: document)
+        return found.isEmpty ? nil : .array(found.map(JSONValue.string))
     }
 
     /// Where `text` is on the edited image, by OCR; the error lists what is there.
@@ -127,7 +135,7 @@ enum RemoteEditing {
         return matches[0]
     }
 
-    static func update(_ params: [String: JSONValue]) throws -> JSONValue {
+    static func update(_ params: [String: JSONValue]) async throws -> JSONValue {
         let id = try RemoteDocuments.resolve(params["target"])
         let document = try RemoteDocuments.document(id)
         let existing = try annotation(params["id"]?.stringValue ?? "", in: document)
@@ -151,7 +159,9 @@ enum RemoteEditing {
             guard let index = document.annotations.firstIndex(where: { $0.id == existing.id }) else { return }
             document.annotations[index] = changed
         }
-        return try RemoteDocuments.result(id, edited, extra: ["annotation": AnnotationCoding.json(changed, view: DocumentView(edited))])
+        var extra: [String: JSONValue] = ["annotation": AnnotationCoding.json(changed, view: DocumentView(edited))]
+        extra["warnings"] = await warnings([changed], in: edited)
+        return try RemoteDocuments.result(id, edited, extra: extra)
     }
 
     /// What was found, masked: enough to know what it was, never the secret.
