@@ -153,6 +153,16 @@
         }
       }
     },
+    "Add Profile": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir perfil"
+          }
+        }
+      }
+    },
     "After capturing:": {
       "localizations": {
         "es": {
@@ -829,6 +839,16 @@
         }
       }
     },
+    "Document": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Documento"
+          }
+        }
+      }
+    },
     "Don't Allow": {
       "localizations": {
         "es": {
@@ -849,6 +869,16 @@
         }
       }
     },
+    "Drag to other apps:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrastrar a otras apps:"
+          }
+        }
+      }
+    },
     "Each capture is kept with its annotations, which stay editable from Recent captures. Files you save in your folder are not touched.": {
       "localizations": {
         "es": {
@@ -865,6 +895,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Edición"
+          }
+        }
+      }
+    },
+    "Edit Profiles…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar perfiles…"
           }
         }
       }
@@ -949,6 +989,16 @@
         }
       }
     },
+    "Export": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar"
+          }
+        }
+      }
+    },
     "File": {
       "localizations": {
         "es": {
@@ -985,6 +1035,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Para Claude Code: `claude mcp add shotdock -- shotdock mcp`"
+          }
+        }
+      }
+    },
+    "Format": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato"
           }
         }
       }
@@ -1239,6 +1299,16 @@
         }
       }
     },
+    "Light": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ligero"
+          }
+        }
+      }
+    },
     "Line weight and text size": {
       "localizations": {
         "es": {
@@ -1349,6 +1419,16 @@
         }
       }
     },
+    "Name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre"
+          }
+        }
+      }
+    },
     "Name:": {
       "localizations": {
         "es": {
@@ -1365,6 +1445,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Necesita permiso de Accesibilidad"
+          }
+        }
+      }
+    },
+    "New profile": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo perfil"
           }
         }
       }
@@ -1589,6 +1679,16 @@
         }
       }
     },
+    "Original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original"
+          }
+        }
+      }
+    },
     "Original Size": {
       "localizations": {
         "es": {
@@ -1705,6 +1805,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pulsa el atajo…"
+          }
+        }
+      }
+    },
+    "Profiles:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfiles:"
           }
         }
       }
@@ -1899,6 +2009,16 @@
         }
       }
     },
+    "Remove the profile": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar el perfil"
+          }
+        }
+      }
+    },
     "Repeat last area": {
       "localizations": {
         "es": {
@@ -1949,6 +2069,16 @@
         }
       }
     },
+    "Restore Defaults": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar los predeterminados"
+          }
+        }
+      }
+    },
     "Ruler": {
       "localizations": {
         "es": {
@@ -1985,6 +2115,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Guardar claves en el llavero"
+          }
+        }
+      }
+    },
+    "Save to folder:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar en la carpeta:"
           }
         }
       }
@@ -2737,6 +2877,16 @@
         }
       }
     },
+    "Upload:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir:"
+          }
+        }
+      }
+    },
     "Upload: bucket “%@” on %@. The keys cannot be read from Shottr: type them in Preferences › Upload.": {
       "localizations": {
         "en": {
@@ -2815,6 +2965,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Visualización"
+          }
+        }
+      }
+    },
+    "Web": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        }
+      }
+    },
+    "WebP is written without loss. Copying to the clipboard always uses PNG, which every app accepts.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebP se escribe sin pérdida. Al copiar al portapapeles siempre se usa PNG, que aceptan todas las apps."
           }
         }
       }
@@ -2979,6 +3149,16 @@
         }
       }
     },
+    "lossless": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sin pérdida"
+          }
+        }
+      }
+    },
     "macOS protects other apps' settings: select “cc.ffitch.shottr.plist” in the panel that opens.": {
       "localizations": {
         "es": {
@@ -2989,12 +3169,68 @@
         }
       }
     },
+    "max. width": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancho máx."
+          }
+        }
+      }
+    },
+    "no loss": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sin pérdida"
+          }
+        }
+      }
+    },
     "off": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "desactivado"
+          }
+        }
+      }
+    },
+    "up to %lld px high": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hasta %lld px de alto"
+          }
+        }
+      }
+    },
+    "up to %lld px wide": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hasta %lld px de ancho"
+          }
+        }
+      }
+    },
+    "up to %lld × %lld px": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "up to %1$lld × %2$lld px"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hasta %lld × %lld px"
           }
         }
       }

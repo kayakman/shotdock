@@ -3,12 +3,13 @@ import ShotDockCore
 import SwiftUI
 
 enum PreferencesTab: Int, CaseIterable {
-    case general, capture, shortcuts, history, upload, agents, importing
+    case general, capture, export, shortcuts, history, upload, agents, importing
 
     var title: String {
         switch self {
         case .general: String(localized: "General")
         case .capture: String(localized: "Capture")
+        case .export: String(localized: "Export")
         case .shortcuts: String(localized: "Shortcuts")
         case .history: String(localized: "History")
         case .upload: String(localized: "Upload")
@@ -21,6 +22,7 @@ enum PreferencesTab: Int, CaseIterable {
         switch self {
         case .general: "gearshape"
         case .capture: "camera.viewfinder"
+        case .export: "photo.on.rectangle.angled"
         case .shortcuts: "keyboard"
         case .history: "clock.arrow.circlepath"
         case .upload: "icloud.and.arrow.up"
@@ -49,6 +51,7 @@ final class PreferencesWindowController: NSWindowController {
             let view: AnyView = switch tab {
             case .general: AnyView(GeneralPane(settings: settings))
             case .capture: AnyView(CapturePane(settings: settings, window: parent))
+            case .export: AnyView(ExportPreferences(settings: settings))
             case .shortcuts: AnyView(ShortcutsPane(settings: settings, manager: shortcuts))
             case .history: AnyView(HistoryPane(settings: settings))
             case .upload: AnyView(UploadPreferences(settings: settings, window: parent))
@@ -157,7 +160,7 @@ private struct CapturePane: View {
     let window: () -> NSWindow?
 
     private var preview: String {
-        FilenameTemplate(settings.filenameTemplate).name(for: Date()) + "." + settings.imageFormat.fileExtension
+        FilenameTemplate(settings.filenameTemplate).name(for: Date()) + "." + settings.profile(for: .save).format.fileExtension
     }
 
     var body: some View {
@@ -177,12 +180,12 @@ private struct CapturePane: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Picker("Format:", selection: $settings.imageFormat) {
-                Text(verbatim: "PNG").tag(ImageFormat.png)
-                Text(verbatim: "JPEG").tag(ImageFormat.jpeg)
+            LabeledContent("Format:") {
+                HStack {
+                    ProfilePicker(settings: settings, destination: .save)
+                    Button("Edit Profiles…") { (NSApp.delegate as? AppDelegate)?.openPreferences(tab: .export) }
+                }
             }
-            .pickerStyle(.radioGroup)
-            .horizontalRadioGroupLayout()
 
             Divider()
 

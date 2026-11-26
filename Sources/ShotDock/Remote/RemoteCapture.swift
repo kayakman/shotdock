@@ -211,9 +211,11 @@ enum RemoteCapture {
         let image = document.annotations.isEmpty ? document.image : document.flattened() ?? document.image
         let itemID = params["history"]?.boolValue == false ? nil : LibraryStore.shared.add(document)
         result["id"] = itemID.map { .string($0.uuidString) } ?? .null
-        let file = try RemoteFiles.write(image, scale: document.scale, date: document.createdAt,
-                                         to: params["out"]?.stringValue, format: params["format"]?.stringValue)
-        result["path"] = .string(file.path)
+        result["path"] = .string(try RemoteFiles.write(image, scale: document.scale, date: document.createdAt).path)
+        if let out = params["out"]?.stringValue {
+            result["file"] = try RemoteFiles.export(image, scale: document.scale, to: out,
+                                                    profile: try RemoteFiles.profile(params, destination: nil, path: out))
+        }
         if let rect = captured.rect {
             result["rect"] = JSONValue(rect)
             result["display"] = RemoteScreens.displayIndex(containing: CGPoint(x: rect.midX, y: rect.midY)).map { .number(Double($0)) } ?? .null
@@ -222,14 +224,16 @@ enum RemoteCapture {
 
         if flag("copy") { result["copied"] = .bool(Pasteboard.copy(image, scale: document.scale)) }
         if flag("save") {
-            let url = try coordinator.save(image, scale: document.scale, date: document.createdAt)
+            let url = try coordinator.save(image, scale: document.scale, date: document.createdAt,
+                                           profile: try RemoteFiles.profile(params, destination: .save))
             if let itemID { LibraryStore.shared.markSaved(itemID, at: url) }
             result["saved_path"] = .string(url.path)
         }
         if flag("upload") {
             do {
                 let link = try await Uploader.upload(image, scale: document.scale, date: document.createdAt, libraryItem: itemID,
-                                                     copyLink: false, quiet: true)
+                                                     copyLink: false, quiet: true,
+                                                     profile: try RemoteFiles.profile(params, destination: .upload))
                 result["url"] = .string(link.absoluteString)
             } catch {
                 // The capture is kept; say why the upload failed.
@@ -256,37 +260,67 @@ enum RemoteFiles {
     static var folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("app.shotdock.ShotDock/Agent", isDirectory: true)
 
-    static func format(for path: String?, explicit: String?) -> ImageFormat {
-        if let explicit, let format = ImageFormat(rawValue: explicit) { return format }
-        switch (path as NSString?)?.pathExtension.lowercased() {
-        case "jpg", "jpeg": return .jpeg
-        default: return .png
+    /// The full-resolution PNG of an image as edited, in the caches: what
+    /// `path` points at and MCP previews are made from.
+    static func write(_ image: CGImage, scale: CGFloat, date: Date) throws -> URL {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        prune()
+        // No spaces: agents paste these paths into shell commands.
+        let base = FilenameTemplate("shotdock-{year}{month}{day}-{h}{min}{s}").name(for: date)
+        var url = folder.appendingPathComponent(base).appendingPathExtension("png")
+        var counter = 2
+        while FileManager.default.fileExists(atPath: url.path) {
+            url = folder.appendingPathComponent("\(base)-\(counter)").appendingPathExtension("png")
+            counter += 1
         }
+        try ImageEncoding.write(image, to: url, format: .png, scale: scale)
+        return url
     }
 
-    static func write(_ image: CGImage, scale: CGFloat, date: Date, to path: String?, format explicit: String?) throws -> URL {
-        let format = format(for: path, explicit: explicit)
-        let url: URL
-        if let path {
-            var target = URL(fileURLWithPath: path)
-            if target.pathExtension.isEmpty { target.appendPathExtension(format.fileExtension) }
-            try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-            url = target
-        } else {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            prune()
-            // No spaces: agents paste these paths into shell commands.
-            let base = FilenameTemplate("shotdock-{year}{month}{day}-{h}{min}{s}").name(for: date)
-            var candidate = folder.appendingPathComponent(base).appendingPathExtension(format.fileExtension)
-            var counter = 2
-            while FileManager.default.fileExists(atPath: candidate.path) {
-                candidate = folder.appendingPathComponent("\(base)-\(counter)").appendingPathExtension(format.fileExtension)
-                counter += 1
-            }
-            url = candidate
+    /// Writes `out` as `profile` says; the extension follows the format written.
+    static func export(_ image: CGImage, scale: CGFloat, to path: String, profile: ExportProfile) throws -> JSONValue {
+        let encoded = try ImageEncoding.encode(image, scale: scale, profile: profile)
+        var url = URL(fileURLWithPath: path)
+        if ImageFormat(fileExtension: url.pathExtension) != encoded.format {
+            if ImageFormat(fileExtension: url.pathExtension) != nil { url.deletePathExtension() }
+            url.appendPathExtension(encoded.format.fileExtension)
         }
-        try ImageEncoding.write(image, to: url, format: format, scale: scale)
-        return url
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try encoded.data.write(to: url, options: .atomic)
+        return describe(encoded, at: url)
+    }
+
+    static func describe(_ encoded: EncodedImage, at url: URL) -> JSONValue {
+        ["path": .string(url.path), "format": .string(encoded.format.rawValue), "width": .number(Double(encoded.width)),
+         "height": .number(Double(encoded.height)), "bytes": .number(Double(encoded.data.count))]
+    }
+
+    /// The profile for one export: `profile` by name, else the destination's
+    /// (or, for a file, its extension's format), with --format, --quality,
+    /// --max-width and --max-height on top.
+    static func profile(_ params: [String: JSONValue], destination: ExportDestination?, path: String? = nil) throws -> ExportProfile {
+        let settings = AppSettings.shared
+        var base: ExportProfile
+        if let name = params["profile"]?.stringValue {
+            guard let named = settings.profile(named: name) else {
+                throw RPCError.notFound("No profile \(name); profiles: \(settings.exportProfiles.map(\.name).joined(separator: ", "))")
+            }
+            base = named
+        } else if let destination {
+            base = settings.profile(for: destination)
+        } else {
+            base = ExportProfile(name: "file", format: path.flatMap { ImageFormat(fileExtension: ($0 as NSString).pathExtension) } ?? .png)
+        }
+        let format = try params["format"]?.stringValue.map { text -> ImageFormat in
+            guard let format = ImageFormat(rawValue: text) else { throw RPCError.invalidParams("Unknown format \(text)") }
+            guard format.isAvailable else { throw RPCError.invalidParams("This Mac cannot write \(format.title)") }
+            return format
+        }
+        if params["profile"] == nil, destination == nil, format == nil, let path, let byExtension = ImageFormat(fileExtension: (path as NSString).pathExtension) {
+            base.format = byExtension
+        }
+        return base.overriding(format: format, quality: params["quality"]?.doubleValue.map { $0 / 100 },
+                               maxWidth: params["max_width"]?.intValue, maxHeight: params["max_height"]?.intValue)
     }
 
     /// Removes cached files older than a day.

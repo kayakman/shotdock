@@ -27,6 +27,41 @@ enum RemotePreferences {
             }
             return ["key": .string(key), "value": value(key)]
         },
+        "profiles.list": { _, _ in
+            ["profiles": .array(settings.exportProfiles.map(json))]
+        },
+        "profiles.set": { params, _ in
+            let name = params["name"]?.stringValue ?? ""
+            guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { throw RPCError.invalidParams("A profile needs a name") }
+            var profile = settings.profile(named: name) ?? ExportProfile(name: name, format: .png)
+            if let text = params["format"]?.stringValue {
+                guard let format = ImageFormat(rawValue: text), format.isAvailable else { throw RPCError.invalidParams("This Mac cannot write \(text)") }
+                profile.format = format
+            }
+            if let quality = params["quality"]?.doubleValue {
+                guard (0...100).contains(quality) else { throw RPCError.invalidParams("quality must be 0–100") }
+                profile.quality = quality / 100
+            }
+            profile = profile.overriding(maxWidth: params["max_width"]?.intValue, maxHeight: params["max_height"]?.intValue)
+            if let rename = params["rename"]?.stringValue, rename != profile.name {
+                if let other = settings.profile(named: rename), other.id != profile.id { throw RPCError.invalidParams("There is already a profile \(rename)") }
+                profile.name = rename
+            }
+            if let index = settings.exportProfiles.firstIndex(where: { $0.id == profile.id }) {
+                settings.exportProfiles[index] = profile
+            } else {
+                settings.exportProfiles.append(profile)
+            }
+            return json(profile)
+        },
+        "profiles.remove": { params, _ in
+            let name = params["name"]?.stringValue ?? ""
+            guard let profile = settings.profile(named: name) else { throw RPCError.notFound("No profile \(name)") }
+            guard settings.exportProfiles.count > 1 else { throw RPCError.invalidParams("The last profile cannot be removed") }
+            settings.exportProfiles.removeAll { $0.id == profile.id }
+            for (destination, id) in settings.destinationProfiles where id == profile.id { settings.destinationProfiles[destination] = nil }
+            return ["removed": .string(profile.name)]
+        },
         "shortcuts.list": { _, _ in
             var rows: [JSONValue] = []
             for action in ShortcutAction.allCases {
@@ -45,7 +80,7 @@ enum RemotePreferences {
             switch params["window"]?.stringValue {
             case "about": app.showAbout()
             default:
-                let tabs: [String: PreferencesTab] = ["general": .general, "capture": .capture, "shortcuts": .shortcuts, "history": .history,
+                let tabs: [String: PreferencesTab] = ["general": .general, "capture": .capture, "export": .export, "shortcuts": .shortcuts, "history": .history,
                                                       "upload": .upload, "agents": .agents, "import": .importing]
                 app.openPreferences(tab: params["tab"]?.stringValue.flatMap { tabs[$0] })
             }
@@ -65,7 +100,9 @@ enum RemotePreferences {
         case "upload_after_capture": return .bool(settings.uploadAfterCapture)
         case "save_folder": return .string(settings.saveFolder.path)
         case "filename_template": return .string(settings.filenameTemplate)
-        case "image_format": return .string(settings.imageFormat.rawValue)
+        case "save_profile": return .string(settings.profile(for: .save).name)
+        case "upload_profile": return .string(settings.profile(for: .upload).name)
+        case "drag_profile": return .string(settings.profile(for: .drag).name)
         case "capture_delay": return .number(Double(settings.captureDelay))
         case "window_shadow": return .bool(settings.windowShadow)
         case "scroll_max_height": return .number(Double(settings.scrollMaxHeight))
@@ -107,7 +144,12 @@ enum RemotePreferences {
             }
             settings.saveFolder = URL(fileURLWithPath: path, isDirectory: true)
         case "filename_template": settings.filenameTemplate = text
-        case "image_format": settings.imageFormat = ImageFormat(rawValue: text) ?? .png
+        case "save_profile", "upload_profile", "drag_profile":
+            guard let profile = settings.profile(named: text) else {
+                throw RPCError.notFound("No profile \(text); profiles: \(settings.exportProfiles.map(\.name).joined(separator: ", "))")
+            }
+            let destination: ExportDestination = key == "save_profile" ? .save : key == "upload_profile" ? .upload : .drag
+            settings.destinationProfiles[destination] = profile.id
         case "capture_delay": settings.captureDelay = int
         case "window_shadow": settings.windowShadow = bool
         case "scroll_max_height": settings.scrollMaxHeight = int
@@ -134,6 +176,19 @@ enum RemotePreferences {
         case "s3.public_read_acl": settings.s3.publicReadACL = bool
         default: throw RPCError.invalidParams("\(key) cannot be changed from outside ShotDock")
         }
+    }
+
+    static func json(_ profile: ExportProfile) -> JSONValue {
+        let usedFor = ExportDestination.allCases.filter { settings.profile(for: $0).id == profile.id }.map { JSONValue.string($0.rawValue) }
+        return [
+            "name": .string(profile.name),
+            "format": .string(profile.format.rawValue),
+            "quality": profile.format.hasQuality ? .number((profile.quality * 100).rounded()) : .null,
+            "max_width": profile.maxWidth.map { .number(Double($0)) } ?? .null,
+            "max_height": profile.maxHeight.map { .number(Double($0)) } ?? .null,
+            "summary": .string(profile.summary),
+            "used_for": .array(usedFor),
+        ]
     }
 
     // MARK: Shortcuts

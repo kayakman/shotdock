@@ -92,7 +92,7 @@ struct UploadPreferences: View {
 
     private var exampleLink: String? {
         guard settings.s3.isComplete else { return nil }
-        let key = settings.s3.key(for: UploadNaming.objectName(base: CaptureNaming.defaultName(for: Date()), format: settings.imageFormat, random: "k7x2m9qa"))
+        let key = settings.s3.key(for: UploadNaming.objectName(base: CaptureNaming.defaultName(for: Date()), format: settings.profile(for: .upload).format, random: "k7x2m9qa"))
         let url = settings.s3.linkMode == .publicURL ? settings.s3.publicLink(key: key) : settings.s3.objectURL(key: key)
         return url.map { String(localized: "Example: \($0.absoluteString + (settings.s3.linkMode == .presigned ? "?X-Amz-…" : ""))") }
     }

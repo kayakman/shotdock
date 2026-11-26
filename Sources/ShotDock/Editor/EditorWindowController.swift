@@ -151,15 +151,17 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
         canvas.commitTextEditing()
         guard let window, let image = model.flattened() else { return }
         let settings = AppSettings.shared
-        let format = settings.imageFormat
         let panel = NSSavePanel()
-        panel.allowedContentTypes = [format == .png ? .png : .jpeg]
-        panel.nameFieldStringValue = settings.autoSaveURL(for: model.document.createdAt).lastPathComponent
+        let chooser = ProfileChooser(panel: panel, profiles: settings.exportProfiles, selected: settings.profile(for: .save))
+        panel.accessoryView = chooser.view
+        panel.nameFieldStringValue = settings.autoSaveURL(for: model.document.createdAt, format: chooser.profile.format)
+            .deletingPathExtension().lastPathComponent
         panel.directoryURL = settings.saveFolder
         panel.beginSheetModal(for: window) { [model] response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                try ImageEncoding.write(image, to: url, format: format, scale: model.document.exportScale)
+                let encoded = try ImageEncoding.encode(image, scale: model.document.exportScale, profile: chooser.profile)
+                try encoded.data.write(to: url.deletingPathExtension().appendingPathExtension(encoded.format.fileExtension), options: .atomic)
                 model.flash(String(localized: "Saved"))
             } catch {
                 NSAlert(error: error).beginSheetModal(for: window)
@@ -282,5 +284,35 @@ final class CenteringClipView: NSClipView {
         if rect.width > documentFrame.width { rect.origin.x = (documentFrame.width - rect.width) / 2 }
         if rect.height > documentFrame.height { rect.origin.y = (documentFrame.height - rect.height) / 2 }
         return rect
+    }
+}
+
+/// The profile popup of Save As…; the file type follows it.
+@MainActor
+final class ProfileChooser: NSObject {
+    let view: NSView
+    private let popup = NSPopUpButton()
+    private let profiles: [ExportProfile]
+    private weak var panel: NSSavePanel?
+
+    init(panel: NSSavePanel, profiles: [ExportProfile], selected: ExportProfile) {
+        self.panel = panel
+        self.profiles = profiles
+        let label = NSTextField(labelWithString: String(localized: "Format:"))
+        let stack = NSStackView(views: [label, popup])
+        stack.edgeInsets = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        view = stack
+        super.init()
+        for profile in profiles { popup.addItem(withTitle: "\(profile.name) — \(profile.summary)") }
+        popup.selectItem(at: profiles.firstIndex { $0.id == selected.id } ?? 0)
+        popup.target = self
+        popup.action = #selector(changed)
+        changed()
+    }
+
+    var profile: ExportProfile { profiles[max(popup.indexOfSelectedItem, 0)] }
+
+    @objc private func changed() {
+        panel?.allowedContentTypes = [UTType(filenameExtension: profile.writtenFormat(for: .zero).fileExtension) ?? .png]
     }
 }

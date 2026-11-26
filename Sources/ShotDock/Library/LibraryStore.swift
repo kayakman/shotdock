@@ -115,9 +115,12 @@ final class LibraryStore {
         guard let document = document(id), let image = document.flattened() else { return nil }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ShotDock Drag", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        guard let encoded = try? ImageEncoding.encode(image, scale: document.exportScale, profile: AppSettings.shared.profile(for: .drag)) else {
+            return nil
+        }
         let url = folder.appendingPathComponent(FilenameTemplate(AppSettings.shared.filenameTemplate).name(for: document.createdAt))
-            .appendingPathExtension("png")
-        guard (try? ImageEncoding.write(image, to: url, scale: document.exportScale)) != nil else { return nil }
+            .appendingPathExtension(encoded.format.fileExtension)
+        guard (try? encoded.data.write(to: url, options: .atomic)) != nil else { return nil }
         return url
     }
 

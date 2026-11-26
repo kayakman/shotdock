@@ -6,10 +6,55 @@ import UniformTypeIdentifiers
 public enum ImageFormat: String, CaseIterable, Codable, Sendable {
     case png
     case jpeg
+    case webp
+    case heic
+    case avif
 
-    public var fileExtension: String { rawValue == "jpeg" ? "jpg" : rawValue }
+    public var fileExtension: String { self == .jpeg ? "jpg" : rawValue }
 
-    var utType: UTType { self == .png ? .png : .jpeg }
+    public var mimeType: String { "image/\(rawValue)" }
+
+    public var title: String {
+        switch self {
+        case .png: "PNG"
+        case .jpeg: "JPEG"
+        case .webp: "WebP"
+        case .heic: "HEIC"
+        case .avif: "AVIF"
+        }
+    }
+
+    /// PNG and WebP (ShotDock writes lossless WebP) keep every pixel; the rest take a quality.
+    public var hasQuality: Bool { self != .png && self != .webp }
+
+    var utType: UTType {
+        switch self {
+        case .png: .png
+        case .jpeg: .jpeg
+        case .webp: .webP
+        case .heic: .heic
+        case .avif: UTType("public.avif") ?? .heic
+        }
+    }
+
+    /// The format of a file name's extension.
+    public init?(fileExtension: String) {
+        switch fileExtension.lowercased() {
+        case "png": self = .png
+        case "jpg", "jpeg": self = .jpeg
+        case "webp": self = .webp
+        case "heic": self = .heic
+        case "avif": self = .avif
+        default: return nil
+        }
+    }
+
+    /// Whether this Mac can write it (WebP has its own encoder).
+    public var isAvailable: Bool {
+        self == .webp || (CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []).contains(utType.identifier)
+    }
+
+    public static var available: [ImageFormat] { allCases.filter(\.isAvailable) }
 }
 
 public enum ImageEncodingError: Error {
@@ -23,6 +68,7 @@ public enum ImageEncoding {
     /// captures at their point size.
     public static func data(from image: CGImage, format: ImageFormat = .png,
                             scale: CGFloat = 1, jpegQuality: CGFloat = 0.9) throws -> Data {
+        if format == .webp { return try WebPLossless.encode(image) }
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(
             data, format.utType.identifier as CFString, 1, nil
@@ -33,7 +79,7 @@ public enum ImageEncoding {
             kCGImagePropertyDPIWidth: dpi,
             kCGImagePropertyDPIHeight: dpi,
         ]
-        if format == .jpeg {
+        if format.hasQuality {
             properties[kCGImageDestinationLossyCompressionQuality] = jpegQuality
         }
         CGImageDestinationAddImage(destination, image, properties as CFDictionary)

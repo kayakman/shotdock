@@ -36,7 +36,7 @@ enum RemoteHistory {
             result["original_width"] = .number(Double(document.image.width))
             result["original_height"] = .number(Double(document.image.height))
             result["open_in_editor"] = .bool(RemoteDocuments.editor(for: id) != nil)
-            return .object(result.merging(try rendered(document, out: nil, format: nil).objectValue ?? [:]) { _, new in new })
+            return .object(result.merging(try rendered(document).objectValue ?? [:]) { _, new in new })
         },
         "history.open": { params, _ in
             let id = try store.resolve(params["target"]?.stringValue ?? "")
@@ -51,15 +51,20 @@ enum RemoteHistory {
         "history.save": { params, _ in
             let id = try store.resolve(params["target"]?.stringValue ?? "")
             let (image, document) = try flattened(id)
-            let url = try coordinator.save(image, scale: document.exportScale, date: document.createdAt)
+            let url = try coordinator.save(image, scale: document.exportScale, date: document.createdAt,
+                                           profile: try RemoteFiles.profile(params, destination: .save))
             store.markSaved(id, at: url)
             return ["id": .string(id.uuidString), "saved_path": .string(url.path)]
         },
         "history.export": { params, _ in
             let id = try store.resolve(params["target"]?.stringValue ?? "")
-            var result = try rendered(try RemoteDocuments.document(id), out: params["out"]?.stringValue, format: params["format"]?.stringValue)
-            if case var .object(object) = result { object["id"] = .string(id.uuidString); result = .object(object) }
-            return result
+            let document = try RemoteDocuments.document(id)
+            guard let image = document.flattened() else { throw RPCError.internalError("Cannot draw the capture") }
+            let out = params["out"]?.stringValue ?? ""
+            var result = try rendered(document).objectValue ?? [:]
+            result["id"] = .string(id.uuidString)
+            result["file"] = try RemoteFiles.export(image, scale: document.exportScale, to: out, profile: try RemoteFiles.profile(params, destination: nil, path: out))
+            return .object(result)
         },
         "history.reveal": { params, _ in
             let id = try store.resolve(params["target"]?.stringValue ?? "")
@@ -136,9 +141,9 @@ enum RemoteHistory {
     }
 
     /// The edited image written to a file: the path and its size.
-    static func rendered(_ document: CaptureDocument, out: String?, format: String?) throws -> JSONValue {
+    static func rendered(_ document: CaptureDocument) throws -> JSONValue {
         guard let image = document.flattened() else { throw RPCError.internalError("Cannot draw the capture") }
-        let url = try RemoteFiles.write(image, scale: document.exportScale, date: document.createdAt, to: out, format: format)
+        let url = try RemoteFiles.write(image, scale: document.exportScale, date: document.createdAt)
         return ["path": .string(url.path), "width": .number(Double(image.width)), "height": .number(Double(image.height)),
                 "scale": .number(document.exportScale)]
     }

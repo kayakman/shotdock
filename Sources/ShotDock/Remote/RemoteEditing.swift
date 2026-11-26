@@ -268,7 +268,7 @@ extension RemoteDocuments {
 
     /// What edit commands return: the edited image written to a file.
     static func result(_ id: UUID, _ document: CaptureDocument, extra: [String: JSONValue] = [:]) throws -> JSONValue {
-        var result = try RemoteHistory.rendered(document, out: nil, format: nil).objectValue ?? [:]
+        var result = try RemoteHistory.rendered(document).objectValue ?? [:]
         result["id"] = .string(id.uuidString)
         result["annotation_count"] = .number(Double(document.annotations.count))
         result.merge(extra) { _, new in new }

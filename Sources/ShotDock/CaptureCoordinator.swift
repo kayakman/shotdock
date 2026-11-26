@@ -329,11 +329,13 @@ final class CaptureCoordinator {
         HUD.show(String(localized: "Copied \(text)"), symbol: "eyedropper")
     }
 
+    /// Saves to the folder from the preferences, as the save profile (or `profile`) says.
     @discardableResult
-    func save(_ image: CGImage, scale: CGFloat, date: Date) throws -> URL {
+    func save(_ image: CGImage, scale: CGFloat, date: Date, profile: ExportProfile? = nil) throws -> URL {
+        let encoded = try ImageEncoding.encode(image, scale: scale, profile: profile ?? settings.profile(for: .save))
         try FileManager.default.createDirectory(at: settings.saveFolder, withIntermediateDirectories: true)
-        let url = settings.autoSaveURL(for: date)
-        try ImageEncoding.write(image, to: url, format: settings.imageFormat, scale: scale)
+        let url = settings.autoSaveURL(for: date, format: encoded.format)
+        try encoded.data.write(to: url, options: .atomic)
         return url
     }
 

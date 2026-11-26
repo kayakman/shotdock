@@ -55,12 +55,21 @@ public enum CommandCatalog {
 
     // MARK: Captures
 
+    /// How a file is written: a named profile and/or its settings.
+    static let exportOptions: [ParamSpec] = [
+        ParamSpec("profile", .string, "Export profile by name (see `shotdock profiles list`); default: the destination's"),
+        ParamSpec("format", .choice(ImageFormat.allCases.map(\.rawValue)), "Format: png, jpeg, webp (lossless), heic or avif"),
+        ParamSpec("quality", .number, "Quality 0–100 for jpeg, heic and avif"),
+        ParamSpec("max_width", .integer, "Largest width in pixels (never enlarges)"),
+        ParamSpec("max_height", .integer, "Largest height in pixels"),
+    ]
+
     /// What to do with a new capture; agents' captures are silent unless asked.
     static let delivery: [ParamSpec] = [
         ParamSpec("delay", .number, "Seconds to wait before capturing"),
         ParamSpec("countdown", .boolean, "Show the countdown on screen during the delay"),
-        ParamSpec("out", .path, "Also write the image to this file (.png or .jpg)"),
-        ParamSpec("format", .choice(["png", "jpeg"]), "Format of the file (default: from the extension of out, else png)"),
+        ParamSpec("out", .path, "Also write the image to this file (.png, .jpg, .webp, .heic, .avif)"),
+    ] + exportOptions + [
         ParamSpec("copy", .boolean, "Copy the image to the clipboard"),
         ParamSpec("save", .boolean, "Save it in the folder set in the preferences"),
         ParamSpec("upload", .boolean, "Upload it to S3 and return the link"),
@@ -135,12 +144,14 @@ public enum CommandCatalog {
             """, params: [target], mcp: "history_get", returnsImage: true, readOnly: true),
         CommandSpec("history.open", "Open a capture in the editor", params: [target], mcp: "history_open"),
         CommandSpec("history.copy", "Copy a capture, as edited, to the clipboard", params: [target], mcp: "history_copy"),
-        CommandSpec("history.save", "Save a capture, as edited, in the folder set in the preferences", params: [target], mcp: "history_save"),
-        CommandSpec("history.export", "Write a capture, as edited, to a file", params: [
-            target,
-            ParamSpec("out", .path, "File to write (.png or .jpg)", required: true),
-            ParamSpec("format", .choice(["png", "jpeg"]), "Format (default: from the extension)"),
-        ], mcp: "history_export", returnsImage: true),
+        CommandSpec("history.save", "Save a capture, as edited, in the folder set in the preferences", params: [target] + exportOptions,
+                    mcp: "history_save"),
+        CommandSpec("history.export", "Write a capture, as edited, to a file", details: """
+            The format comes from --profile or --format, else from the extension of out.
+            """, params: [
+                target,
+                ParamSpec("out", .path, "File to write (.png, .jpg, .webp, .heic, .avif)", required: true),
+            ] + exportOptions, mcp: "history_export", returnsImage: true),
         CommandSpec("history.reveal", "Show the saved file of a capture in the Finder", params: [target], mcp: "history_reveal"),
         CommandSpec("history.delete", "Delete captures from the history (saved files are not touched)", params: [
             ParamSpec("targets", .strings, "Captures to delete", positional: true),
@@ -330,7 +341,7 @@ public enum CommandCatalog {
             """, params: [
                 editTarget,
                 ParamSpec("copy", .boolean, "Copy the link to the clipboard"),
-            ], mcp: "upload"),
+            ] + exportOptions, mcp: "upload"),
         CommandSpec("upload.test", "Check the S3 settings by uploading and deleting a tiny file", mcp: "upload_test"),
         CommandSpec("s3.credentials", "Set the S3 access keys (kept in the keychain)", details: """
             Without --secret-access-key the secret is asked for on the terminal, without echo. Not an MCP tool:
@@ -353,6 +364,21 @@ public enum CommandCatalog {
             ParamSpec("key", .choice(Preferences.all.map(\.key)), "Preference", required: true, positional: true),
             ParamSpec("value", .scalar, "New value", required: true, positional: true),
         ], mcp: "set_preferences"),
+        CommandSpec("profiles.list", "List the export profiles and which destination uses each", mcp: "list_profiles", readOnly: true),
+        CommandSpec("profiles.set", "Create or change an export profile", details: """
+            A profile is a named format, quality and maximum size, e.g. Web: webp, up to 1600 px. Destinations
+            (save, upload, drag) use one each: `shotdock prefs set save_profile Web`.
+            """, params: [
+                ParamSpec("name", .string, "Profile name", required: true, positional: true),
+                ParamSpec("format", .choice(ImageFormat.allCases.map(\.rawValue)), "Format (new profiles: png)"),
+                ParamSpec("quality", .number, "Quality 0–100 for jpeg, heic and avif"),
+                ParamSpec("max_width", .integer, "Largest width in pixels; 0 for none"),
+                ParamSpec("max_height", .integer, "Largest height in pixels; 0 for none"),
+                ParamSpec("rename", .string, "New name"),
+            ], mcp: "set_profile"),
+        CommandSpec("profiles.remove", "Remove an export profile", params: [
+            ParamSpec("name", .string, "Profile name", required: true, positional: true),
+        ], mcp: "remove_profile", destructive: true),
         CommandSpec("shortcuts.list", "List the keyboard shortcuts: global ones and the editor's", mcp: "get_shortcuts", readOnly: true),
         CommandSpec("shortcuts.set", "Change a keyboard shortcut", details: """
             Combos as "⇧⌘2" or "shift+cmd+2" (keys by their US-layout position). A combo has one use: giving it to an
@@ -365,7 +391,7 @@ public enum CommandCatalog {
             ], mcp: "set_shortcut"),
         CommandSpec("open", "Show the preferences (optionally a tab) or the About window", params: [
             ParamSpec("window", .choice(["preferences", "about"]), "Window (the history has `history gallery`)", required: true, positional: true),
-            ParamSpec("tab", .choice(["general", "capture", "shortcuts", "history", "upload", "agents", "import"]), "Preferences tab"),
+            ParamSpec("tab", .choice(["general", "capture", "export", "shortcuts", "history", "upload", "agents", "import"]), "Preferences tab"),
         ], mcp: "show_window"),
     ]
 }

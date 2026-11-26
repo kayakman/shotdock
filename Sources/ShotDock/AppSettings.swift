@@ -18,7 +18,9 @@ final class AppSettings {
     var saveAfterCapture: Bool { didSet { defaults.set(saveAfterCapture, forKey: "saveAfterCapture") } }
     var saveFolder: URL { didSet { defaults.set(saveFolder.path, forKey: "saveFolder") } }
     var filenameTemplate: String { didSet { defaults.set(filenameTemplate, forKey: "filenameTemplate") } }
-    var imageFormat: ImageFormat { didSet { defaults.set(imageFormat.rawValue, forKey: "imageFormat") } }
+    /// Named formats ("Web: WebP, up to 1600 px"); each destination uses one.
+    var exportProfiles: [ExportProfile] { didSet { save(exportProfiles, "exportProfiles") } }
+    var destinationProfiles: [ExportDestination: UUID] { didSet { save(destinationProfiles, "destinationProfiles") } }
     var captureDelay: Int { didSet { defaults.set(captureDelay, forKey: "captureDelay") } }
     var windowShadow: Bool { didSet { defaults.set(windowShadow, forKey: "windowShadow") } }
     var colorFormat: ColorFormat { didSet { defaults.set(colorFormat.rawValue, forKey: "colorFormat") } }
@@ -61,7 +63,20 @@ final class AppSettings {
         let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask)[0]
         saveFolder = defaults.string(forKey: "saveFolder").map { URL(fileURLWithPath: $0, isDirectory: true) } ?? desktop
         filenameTemplate = defaults.string(forKey: "filenameTemplate") ?? FilenameTemplate.defaultTemplate
-        imageFormat = defaults.string(forKey: "imageFormat").flatMap(ImageFormat.init(rawValue:)) ?? .png
+        var profiles = defaults.data(forKey: "exportProfiles").flatMap { try? JSONDecoder().decode([ExportProfile].self, from: $0) } ?? []
+        var destinations = defaults.data(forKey: "destinationProfiles")
+            .flatMap { try? JSONDecoder().decode([ExportDestination: UUID].self, from: $0) } ?? [:]
+        if profiles.isEmpty {
+            profiles = ExportProfile.defaults()
+            // Before profiles there was one format, PNG or JPEG: keep JPEG where it was used.
+            if defaults.string(forKey: "imageFormat") == "jpeg" {
+                let jpeg = ExportProfile(name: "JPEG", format: .jpeg, quality: 0.9)
+                profiles.insert(jpeg, at: 1)
+                destinations = [.save: jpeg.id, .upload: jpeg.id]
+            }
+        }
+        exportProfiles = profiles
+        destinationProfiles = destinations
         captureDelay = defaults.object(forKey: "captureDelay") as? Int ?? 3
         windowShadow = defaults.object(forKey: "windowShadow") as? Bool ?? true
         colorFormat = defaults.string(forKey: "colorFormat").flatMap(ColorFormat.init(rawValue:)) ?? .hex
@@ -76,6 +91,20 @@ final class AppSettings {
         approvedAgents = defaults.data(forKey: "approvedAgents").flatMap { try? JSONDecoder().decode([AgentClient].self, from: $0) } ?? []
         lastBackdrop = defaults.data(forKey: "lastBackdrop").flatMap { try? JSONDecoder().decode(Backdrop.self, from: $0) } ?? Backdrop()
         lastArea = defaults.string(forKey: "lastArea").map { NSRectFromString($0) }
+    }
+
+    /// The profile a destination uses: the one chosen, else the first ("Original").
+    func profile(for destination: ExportDestination) -> ExportProfile {
+        destinationProfiles[destination].flatMap { id in exportProfiles.first { $0.id == id } } ?? exportProfiles[0]
+    }
+
+    func profile(named name: String) -> ExportProfile? {
+        exportProfiles.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
+    /// Where a capture is saved without asking, with the extension of the format it will be written in.
+    func autoSaveURL(for date: Date, format: ImageFormat) -> URL {
+        FilenameTemplate(filenameTemplate).uniqueURL(in: saveFolder, for: date, format: format)
     }
 
     /// A combo belongs to one action across both sets: a global hotkey would
@@ -104,10 +133,5 @@ final class AppSettings {
 
     private func save<T: Encodable>(_ value: T, _ key: String) {
         defaults.set(try? JSONEncoder().encode(value), forKey: key)
-    }
-
-    /// Where a capture is saved without asking.
-    func autoSaveURL(for date: Date) -> URL {
-        FilenameTemplate(filenameTemplate).uniqueURL(in: saveFolder, for: date, format: imageFormat)
     }
 }

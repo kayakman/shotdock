@@ -142,3 +142,21 @@ private func item(_ id: String, minutesAgo: Double) -> CaptureItem {
     let scaled = AnnotationCoding.scaled(["type": "rectangle", "rect": ["x": 10, "y": 10, "width": 20, "height": 20], "line_width": 2], by: 2)
     #expect(scaled["rect"]?.rect == CGRect(x: 20, y: 20, width: 40, height: 40) && scaled["line_width"] == 4)
 }
+
+@Test func exportProfilesFitAndEncode() throws {
+    let web = ExportProfile(name: "Web", format: .webp, maxWidth: 1600)
+    #expect(web.fitting(CGSize(width: 3200, height: 1000)) == 0.5)
+    #expect(web.fitting(CGSize(width: 800, height: 1000)) == 1)
+    #expect(ExportProfile(name: "x", format: .png, maxWidth: 1000, maxHeight: 200).fitting(CGSize(width: 2000, height: 800)) == 0.25)
+    let encoded = try ImageEncoding.encode(whiteImage(3200, 400), scale: 2, profile: web)
+    #expect(encoded.format == .webp && encoded.width == 1600 && encoded.height == 200 && encoded.scale == 1)
+    #expect(encoded.data.prefix(4) == Data("RIFF".utf8))
+    let jpeg = try ImageEncoding.encode(whiteImage(), scale: 2, profile: web.overriding(format: .jpeg, quality: 0.5, maxWidth: 0))
+    #expect(jpeg.format == .jpeg && jpeg.width == 400 && jpeg.data.prefix(2) == Data([0xFF, 0xD8]))
+    #expect(ExportProfile(name: "L", format: .jpeg, quality: 0.7, maxWidth: 1280).summary == "JPEG 70 % · up to 1280 px wide")
+    #expect(ImageFormat(fileExtension: "JPG") == .jpeg && ImageFormat(fileExtension: "webp") == .webp && ImageFormat(fileExtension: "gif") == nil)
+    #expect(ImageFormat.available.contains(.webp) && ImageFormat.available.contains(.heic))
+    let profiles = ExportProfile.defaults()
+    let coded = try JSONDecoder().decode([ExportProfile].self, from: JSONEncoder().encode(profiles))
+    #expect(coded == profiles && profiles.map(\.format) == [.png, .webp, .png, .jpeg])
+}

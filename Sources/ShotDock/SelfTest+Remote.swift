@@ -149,8 +149,8 @@ extension SelfTest {
         json = run.json ?? [:]
         check(run.status == 0 && json["width"]?.intValue == Int(300 * scale) && json["height"]?.intValue == Int(200 * scale),
               "area in points becomes pixels (\(json["width"] ?? nil)×\(json["height"] ?? nil))")
-        check(json["path"]?.stringValue == out && (try? Data(contentsOf: URL(fileURLWithPath: out)).prefix(2)) == Data([0xFF, 0xD8]),
-              "--out writes a JPEG where asked")
+        check(json["file"]?["path"]?.stringValue == out && json["file"]?["format"] == "jpeg"
+              && (try? Data(contentsOf: URL(fileURLWithPath: out)).prefix(2)) == Data([0xFF, 0xD8]), "--out writes a JPEG where asked")
         check(json["rect"]?.rect == CGRect(x: 100, y: 80, width: 300, height: 200), "the result says where it was")
 
         let before = library.items.count
@@ -623,10 +623,10 @@ extension SelfTest {
         var run = try await shotdock(["prefs", "list", "--json"])
         let all = run.json?["preferences"]?.arrayValue ?? []
         check(run.status == 0 && all.count == Preferences.all.count && all.allSatisfy { $0["value"] != .null }, "prefs list: every preference has a value")
-        run = try await shotdock(["prefs", "get", "image_format", "--json"])
-        check(run.json?["value"] == "png", "prefs get")
-        run = try await shotdock(["prefs", "set", "image_format", "jpeg", "--json"])
-        check(run.status == 0 && settings.imageFormat == .jpeg, "prefs set image_format jpeg")
+        run = try await shotdock(["prefs", "get", "save_profile", "--json"])
+        check(run.json?["value"] == .string(settings.exportProfiles[0].name), "prefs get")
+        run = try await shotdock(["prefs", "set", "save_profile", "web", "--json"])
+        check(run.status == 0 && settings.profile(for: .save).name == "Web", "prefs set save_profile (any case)")
         run = try await shotdock(["prefs", "set", "capture_delay", "99", "--json"])
         check(run.status == 1 && run.json?["error"]?["kind"] == "invalid_params", "out-of-range values are refused")
         _ = try await shotdock(["prefs", "set", "capture_delay", "5"])
@@ -732,8 +732,8 @@ extension SelfTest {
             : ["ShotDock", "File", "Edit", "Image", "View", "Window"]
         check(menus == expectedMenus, "main menu (\(menus))")
         let tabs = PreferencesTab.allCases.map(\.title)
-        let expectedTabs = spanish ? ["General", "Captura", "Atajos", "Historial", "Subida", "Agentes", "Importar"]
-            : ["General", "Capture", "Shortcuts", "History", "Upload", "Agents", "Import"]
+        let expectedTabs = spanish ? ["General", "Captura", "Exportar", "Atajos", "Historial", "Subida", "Agentes", "Importar"]
+            : ["General", "Capture", "Export", "Shortcuts", "History", "Upload", "Agents", "Import"]
         check(tabs == expectedTabs, "preferences tabs (\(tabs))")
         check(ShortcutAction.captureArea.title == (spanish ? "Capturar área" : "Capture area"), "shortcut titles from Core")
         check(FilenameTemplate.defaultTemplate == (spanish ? "ShotDock {fecha} a las {hora}" : "ShotDock {date} at {time}"), "default file name")
@@ -757,5 +757,76 @@ extension SelfTest {
         try await Task.sleep(for: .milliseconds(500))
         if let window = editor.window { try await snapshot(window, to: sibling("\(language.rawValue)-editor")) }
         editor.close()
+    }
+}
+
+extension SelfTest {
+    /// Export profiles and formats (WebP, HEIC, AVIF, JPEG) from the CLI.
+    func cliFormats() async throws {
+        let settings = AppSettings.shared
+        settings.agentControlEnabled = true
+        settings.saveFolder = output.deletingLastPathComponent().appendingPathComponent("selftest-saved", isDirectory: true)
+        try? FileManager.default.removeItem(at: settings.saveFolder)
+        _ = startControl { true }
+        defer { ControlService.shared.stop() }
+        let folder = output.deletingLastPathComponent()
+        let file = folder.appendingPathComponent("selftest-formats.png")
+        try ImageEncoding.write(Self.testPattern(width: 2400, height: 1200, text: "Formatos"), to: file, scale: 2)
+        _ = try await shotdock(["history", "import", file.path])
+
+        func decoded(_ path: String) -> (type: String, width: Int)? {
+            guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+            return (CGImageSourceGetType(source) as String? ?? "", image.width)
+        }
+
+        var run = try await shotdock(["profiles", "list", "--json"])
+        let names = run.json?["profiles"]?.arrayValue?.compactMap { $0["name"]?.stringValue } ?? []
+        check(names.count == 4 && names.contains("Web"), "four default profiles (\(names))")
+
+        let webp = folder.appendingPathComponent("selftest-formats.webp").path
+        run = try await shotdock(["history", "export", "last", "--out", webp, "--json"])
+        let webpFile = decoded(webp)
+        check(run.status == 0 && run.json?["file"]?["format"] == "webp" && webpFile?.type == "org.webmproject.webp" && webpFile?.width == 2400,
+              "export to .webp writes lossless WebP that macOS reads")
+        let pngSize = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int) ?? 0
+        note("WebP \(run.json?["file"]?["bytes"]?.intValue ?? 0) B vs PNG \(pngSize) B")
+
+        run = try await shotdock(["history", "export", "last", "--out", folder.appendingPathComponent("selftest-formats-web").path, "--profile", "Web", "--json"])
+        check(run.json?["file"]?["width"] == 1600 && run.json?["file"]?["path"]?.stringValue?.hasSuffix(".webp") == true,
+              "--profile Web: WebP up to 1600 px, extension added")
+        run = try await shotdock(["history", "export", "last", "--out", folder.appendingPathComponent("selftest-formats.heic").path, "--quality", "60", "--max-width", "800", "--json"])
+        check(run.json?["file"]?["format"] == "heic" && run.json?["file"]?["width"] == 800, "HEIC from the extension, with quality and size")
+        if ImageFormat.avif.isAvailable {
+            run = try await shotdock(["history", "export", "last", "--out", folder.appendingPathComponent("selftest-formats.avif").path, "--json"])
+            check(run.json?["file"]?["format"] == "avif", "AVIF")
+        } else {
+            note("this Mac cannot write AVIF")
+        }
+
+        // Profiles: create, use for saving, rename, remove.
+        run = try await shotdock(["profiles", "set", "Blog", "--format", "jpeg", "--quality", "75", "--max-width", "1000", "--json"])
+        check(run.status == 0 && settings.profile(named: "blog")?.maxWidth == 1000 && run.json?["summary"]?.stringValue?.contains("75") == true, "profiles set creates one")
+        _ = try await shotdock(["prefs", "set", "save_profile", "Blog"])
+        run = try await shotdock(["history", "save", "last", "--json"])
+        let saved = run.json?["saved_path"]?.stringValue ?? ""
+        check(saved.hasSuffix(".jpg") && decoded(saved)?.width == 1000, "saving uses the save profile (\((saved as NSString).lastPathComponent))")
+        run = try await shotdock(["history", "save", "last", "--format", "webp", "--json"])
+        check(run.json?["saved_path"]?.stringValue?.hasSuffix(".webp") == true, "--format overrides it for one save")
+        _ = try await shotdock(["profiles", "set", "Blog", "--rename", "Blog web"])
+        check(settings.profile(for: .save).name == "Blog web", "renaming keeps it in use")
+        run = try await shotdock(["profiles", "remove", "Blog web", "--json"])
+        check(run.status == 0 && settings.profile(for: .save).id == settings.exportProfiles[0].id, "removing falls back to the first profile")
+        run = try await shotdock(["history", "export", "last", "--out", "/tmp/x.png", "--profile", "Nope", "--json"])
+        check(run.status == 1 && run.json?["error"]?["message"]?.stringValue?.contains("profiles:") == true, "unknown profiles list the others")
+
+        // The Export tab.
+        app.openPreferences(tab: .export)
+        try await Task.sleep(for: .milliseconds(500))
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "preferences" }) {
+            check(window.title == PreferencesTab.export.title, "Export tab")
+            try await snapshot(window, to: sibling("export"))
+            window.close()
+        }
     }
 }

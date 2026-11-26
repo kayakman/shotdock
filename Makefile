@@ -72,7 +72,7 @@ selftest-upload: app
 
 # Every CLI and MCP selftest with the real `shotdock` binary. cli-capture needs
 # the Screen Recording permission and an unlocked screen.
-CLI_TESTS ?= cli mcp cli-history cli-edit cli-inspect cli-share cli-prefs cli-redact cli-capture
+CLI_TESTS ?= cli mcp cli-history cli-edit cli-inspect cli-share cli-prefs cli-redact cli-formats cli-capture
 selftest-cli: app
 	@failed=""; for t in $(CLI_TESTS); do \
 		$(MAKE) --no-print-directory selftest TEST=$$t >/dev/null 2>&1; \

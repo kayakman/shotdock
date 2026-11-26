@@ -18,16 +18,16 @@ enum Uploader {
     /// Agents upload `quiet`ly: no HUD, and the link is copied only if they ask.
     @discardableResult
     static func upload(_ image: CGImage, scale: CGFloat, date: Date, libraryItem: UUID?,
-                       copyLink: Bool = true, quiet: Bool = false) async throws -> URL {
+                       copyLink: Bool = true, quiet: Bool = false, profile: ExportProfile? = nil) async throws -> URL {
         let settings = AppSettings.shared
         let s3 = try client()
-        let format = settings.imageFormat
-        let data = try ImageEncoding.data(from: image, format: format, scale: scale)
+        let encoded = try ImageEncoding.encode(image, scale: scale, profile: profile ?? settings.profile(for: .upload))
+        let data = encoded.data, format = encoded.format
         let base = FilenameTemplate(settings.filenameTemplate).name(for: date)
         let key = s3.configuration.key(for: UploadNaming.objectName(base: base, format: format))
         if !quiet { HUD.show(String(localized: "Uploading…"), symbol: "icloud.and.arrow.up", for: .seconds(120)) }
         do {
-            try await s3.putObject(key: key, data: data, contentType: format == .png ? "image/png" : "image/jpeg")
+            try await s3.putObject(key: key, data: data, contentType: format.mimeType)
         } catch {
             if !quiet { HUD.hide() }
             throw error

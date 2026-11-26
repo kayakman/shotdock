@@ -24,6 +24,9 @@ A macOS app for taking and managing screenshots, with everything Shottr does.
   the keychain.
 - **The dock**: a history of captures with their annotations still editable, and a gallery to
   reopen, copy, save, upload, pin or drag them into another app.
+- **Export profiles**: named formats (PNG, JPEG, lossless WebP, HEIC, AVIF) with quality and
+  maximum size, e.g. "Web: WebP up to 1600 px", chosen for saving, uploading and dragging, and in
+  Save As. WebP is written by ShotDock's own encoder; macOS only reads it.
 - **Resize** and **hide secrets** (API keys, tokens, passwords, e-mails, cards, IBANs) with
   black boxes, from the editor's Image menu.
 - **CLI and MCP server** for AI agents (Claude Code, Codex, Cursor…) covering all of the
@@ -49,7 +52,7 @@ make selftest TEST=…  # checks in the real app: capture, area, editor, modes, 
                       # history, pin-ocr, backdrop, scroll, dock, branding
 make selftest-upload  # upload against a local S3 (scripts/mock-s3.py)
 make selftest-cli     # the CLI and MCP with the real binary: cli, mcp, cli-history, cli-edit,
-                      # cli-inspect, cli-share, cli-prefs, cli-redact, cli-capture
+                      # cli-inspect, cli-share, cli-prefs, cli-redact, cli-formats, cli-capture
 make selftest-l10n    # the interface in English and in Spanish
 make strings          # adds new UI strings to Resources/Localizable.xcstrings
 ```
@@ -124,6 +127,10 @@ shotdock backdrop last --preset 3 --padding 32
 shotdock ocr last --json                            # text, lines and QR codes with boxes
 shotdock measure last --at 210,140                  # ruler between edges
 shotdock upload last --copy                         # S3 link
+shotdock upload last --profile Web                  # as that export profile
+shotdock history export last --out shot.webp --max-width 1200
+shotdock profiles set Blog --format jpeg --quality 75 --max-width 1000
+shotdock prefs set upload_profile Blog
 shotdock history list --search invoice --since 2d
 shotdock prefs set image_format jpeg
 shotdock shortcuts set capture_window "shift+cmd+4"

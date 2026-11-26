@@ -46,7 +46,7 @@ enum RemoteSharing {
             }
             let copy = params["copy"]?.boolValue == true
             let link = try await Uploader.upload(image, scale: document.exportScale, date: document.createdAt, libraryItem: id,
-                                                 copyLink: copy, quiet: true)
+                                                 copyLink: copy, quiet: true, profile: try RemoteFiles.profile(params, destination: .upload))
             return ["id": .string(id.uuidString), "url": .string(link.absoluteString), "copied": .bool(copy)]
         },
         "upload.test": { _, _ in
