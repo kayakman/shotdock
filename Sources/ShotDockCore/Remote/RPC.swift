@@ -69,6 +69,8 @@ public struct RPCError: Error, Codable, Equatable, Sendable, LocalizedError {
     public static let notConfiguredCode = -32004
     /// Another capture is in progress.
     public static let busyCode = -32005
+    /// macOS did not give the image of a window that is not on screen.
+    public static let notVisibleCode = -32006
 
     public static func invalidParams(_ message: String) -> RPCError { RPCError(code: invalidParamsCode, message: message) }
     public static func methodNotFound(_ method: String) -> RPCError { RPCError(code: methodNotFoundCode, message: "Unknown method: \(method)") }
@@ -88,6 +90,7 @@ public struct RPCError: Error, Codable, Equatable, Sendable, LocalizedError {
         case Self.cancelledCode: "cancelled"
         case Self.notConfiguredCode: "not_configured"
         case Self.busyCode: "busy"
+        case Self.notVisibleCode: "not_visible"
         default: "internal_error"
         }
     }

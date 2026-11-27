@@ -88,7 +88,9 @@ public enum CommandCatalog {
         CommandSpec("capture.area", "Capture an area of the screen", details: """
             The area is in points, global, with the origin at the top-left of the main display (as in
             `shotdock displays` and `shotdock windows`); with --display it is relative to that display.
-            --interactive lets the user select it instead. \(captureResult)
+            --interactive lets the user select it instead. It captures what is visible there; for a window
+            covered by others use capture window (with --rect for part of it), which needs nothing brought
+            forward. \(captureResult)
             """, params: [
                 ParamSpec("rect", .rect, "Area in points"),
                 ParamSpec("display", .integer, "Display number: rect is relative to its top-left corner"),
@@ -98,7 +100,11 @@ public enum CommandCatalog {
             Pick it by --id (from `shotdock windows`), by --app and/or --title (loose match, the frontmost
             matching window wins; one in another Space if none is on screen), the --active one, or let the
             user click it (--interactive). With no choice, the active window. ShotDock's own windows
-            (preferences, editor, history) can be captured too. \(captureResult)
+            (preferences, editor, history) can be captured too.
+            The window is captured as it is, even covered by others or in another Space: do not activate or
+            raise it first, nothing changes on screen and the focus stays where it is. Minimised windows and
+            those of hidden apps usually work too; when macOS gives no image the error is not_visible. --rect takes part of the window
+            only, in points from its top-left corner. \(captureResult)
             """, params: [
                 ParamSpec("id", .integer, "Window id"),
                 ParamSpec("app", .string, "App name, or part of it"),
@@ -106,6 +112,7 @@ public enum CommandCatalog {
                 ParamSpec("active", .boolean, "The frontmost window of the active app"),
                 ParamSpec("interactive", .boolean, "Let the user click the window"),
                 ParamSpec("shadow", .boolean, "Include the window shadow (default: as in the preferences)"),
+                ParamSpec("rect", .rect, "Only this part, in points from the window's top-left corner (no shadow)"),
             ] + delivery, mcp: "capture_window", returnsImage: true),
         CommandSpec("capture.screen", "Capture a whole display", details: "Display 1 is the main one. \(captureResult)", params: [
             ParamSpec("display", .integer, "Display number", default: 1),

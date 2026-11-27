@@ -140,6 +140,7 @@ The S3 keys are the only thing left out of MCP, so a secret never passes through
 shotdock windows --app safari                       # windows, front to back
 shotdock open preferences --tab agents && shotdock capture window --app shotdock   # ShotDock's own too
 shotdock capture window --app safari --json         # id, path, width, height, scale…
+shotdock capture window --id 4242 --rect 0,0,600,80 # part of it, even if covered
 shotdock capture area --rect 0,0,800,600 --redact   # in points; covers secrets
 shotdock capture screen --display 2 --out ~/Desktop/screen.png
 shotdock annotate arrow last --from 100,80 --to 320,200 --color blue
@@ -169,12 +170,16 @@ shotdock schema                                     # every command, as JSON
 - **Silent captures.** What an agent captures goes to the history and to a file, without
   touching the clipboard, opening the editor or taking the focus, unless it asks for it with
   `--copy`, `--save`, `--upload`, `--edit` or `--pin`.
+- **Nothing is brought forward.** `capture window` takes the window as it is, even covered by
+  others, minimised or in another Space, so agents need not activate the app first (if macOS
+  gives no image of a window off screen, the error is `not_visible`). `capture area` and
+  `capture screen` take what is visible on screen.
 - **Warnings.** `annotate` and `annotation update` add `warnings` when a mark is cut off at the
   edge of the image, or a text or step is drawn over another mark or over the capture's text.
 - **Captures** are named by id (or its first characters), `last`, `last-1`…, or by the path
   of an image file, which is added to the history.
 - **`--json`** on every command. Exit codes: 0 success, 1 the command failed (`error.kind`:
-  `not_found`, `not_authorized`, `permission_denied`, `cancelled`…), 2 wrong usage,
+  `not_found`, `not_authorized`, `permission_denied`, `cancelled`, `not_visible`…), 2 wrong usage,
   3 ShotDock is not available.
 
 ## Layout

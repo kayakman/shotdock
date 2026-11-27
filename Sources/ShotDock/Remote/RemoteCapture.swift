@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import ScreenCaptureKit
 import ShotDockCore
 
 /// Captures for agents: the same pixels as the menu and the shortcuts, but
@@ -100,13 +101,16 @@ enum RemoteCapture {
 
     static func window(_ params: [String: JSONValue]) async throws -> JSONValue {
         let shadow = params["shadow"]?.boolValue ?? AppSettings.shared.windowShadow
+        let part = params["rect"]?.rect
+        if let part, part.width < 1 || part.height < 1 { throw RPCError.invalidParams("rect must be at least 1×1 point") }
         if params["interactive"]?.boolValue == true {
             try await prepare(params)
             switch try await coordinator.pick(mode: .window) {
             case let .window(info):
-                let document = try await coordinator.windowDocument(info.window, shadow: shadow)
                 let listed = try await RemoteScreens.windows(includeOffscreen: false).first { $0.window.windowID == info.window.windowID }
-                return try await deliver(Captured(document: document, rect: topLeft(info.frame), window: listed?.json), params)
+                var captured = try await capture(info.window, frame: topLeft(info.frame), shadow: shadow, part: part)
+                captured.window = listed?.json
+                return try await deliver(captured, params)
             case let .area(result):
                 return try await deliver(Captured(document: CaptureDocument(image: result.image, scale: result.scale),
                                                   rect: topLeft(result.screenRect)), params)
@@ -133,8 +137,40 @@ enum RemoteCapture {
             let open = windows.filter { $0.window.isOnScreen }.prefix(15).map { "\($0.window.windowID) \($0.app) — \($0.title)" }
             throw RPCError.notFound("No window matches. Open windows:\n" + open.joined(separator: "\n"))
         }
-        let document = try await coordinator.windowDocument(target.window, shadow: shadow)
-        return try await deliver(Captured(document: document, rect: target.frame, window: target.json), params)
+        var captured = try await capture(target.window, frame: target.frame, shadow: shadow, part: part)
+        captured.window = target.json
+        return try await deliver(captured, params)
+    }
+
+    /// One window as it is, covered or not, without bringing it forward;
+    /// `part` (points from its top-left corner) crops it. `frame` is top-left too.
+    static func capture(_ window: SCWindow, frame: CGRect, shadow: Bool, part: CGRect?) async throws -> Captured {
+        let document: CaptureDocument
+        do {
+            document = try await coordinator.windowDocument(window, shadow: part == nil && shadow)
+        } catch where !window.isOnScreen {
+            // ScreenCaptureKit only says the stream failed to start.
+            throw notVisible(window)
+        }
+        guard let part else { return Captured(document: document, rect: frame) }
+        let bounds = CGRect(origin: .zero, size: frame.size)
+        let pixels = CGRect(x: part.minX * document.scale, y: part.minY * document.scale,
+                            width: part.width * document.scale, height: part.height * document.scale)
+            .pixelAligned
+            .intersection(CGRect(x: 0, y: 0, width: document.image.width, height: document.image.height))
+        guard part.intersects(bounds), pixels.width >= 1, pixels.height >= 1, let image = document.image.cropping(to: pixels) else {
+            throw RPCError.invalidParams("rect is outside the window, which is \(Int(frame.width))×\(Int(frame.height)) points")
+        }
+        let rect = part.intersection(bounds).offsetBy(dx: frame.minX, dy: frame.minY)
+        return Captured(document: CaptureDocument(image: image, scale: document.scale), rect: rect)
+    }
+
+    static func notVisible(_ window: SCWindow) -> RPCError {
+        let name = window.owningApplication?.applicationName ?? "its app"
+        return RPCError(code: RPCError.notVisibleCode, message: """
+            macOS did not give the image of window \(window.windowID) of \(name), which is not on screen. ShotDock does \
+            not bring windows forward; once the window is shown it can be captured, even behind other windows.
+            """)
     }
 
     static func screen(_ params: [String: JSONValue]) async throws -> JSONValue {

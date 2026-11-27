@@ -199,6 +199,56 @@ extension SelfTest {
               "capture window of ShotDock's preferences (\(run.json?["width"] ?? nil), \(run.stderr.trimmingCharacters(in: .whitespacesAndNewlines)))")
         app.preferences?.close()
 
+        // A covered window, or part of it, without bringing it forward; minimised, a clear error.
+        func plain(_ color: NSColor, _ frame: CGRect) -> NSWindow {
+            let window = NSWindow(contentRect: frame, styleMask: [.titled, .miniaturizable], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.backgroundColor = color
+            window.orderFront(nil)
+            return window
+        }
+        let covered = plain(.red, CGRect(x: 200, y: 200, width: 300, height: 200))
+        let cover = plain(.blue, CGRect(x: 150, y: 150, width: 400, height: 300))
+        defer { covered.close(); cover.close() }
+        cover.order(.above, relativeTo: covered.windowNumber)
+        try await Task.sleep(for: .milliseconds(400))
+        // The window server's order, front to back.
+        func stacking() -> [Int] {
+            let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+            let numbers = list.compactMap { $0[kCGWindowNumber as String] as? Int }
+            return [cover.windowNumber, covered.windowNumber].map { numbers.firstIndex(of: $0) ?? -1 }
+        }
+        let order = stacking()
+        if order.contains(-1) {
+            note("the test windows are in another Space (a full-screen app in front)")
+        } else {
+            check(order[0] < order[1], "the test window is covered (\(order))")
+        }
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        run = try await shotdock(["capture", "window", "--id", String(covered.windowNumber), "--rect", "20,60,100,50", "--no-history", "--json"])
+        json = run.json ?? [:]
+        let coveredImage = json["path"]?.stringValue.flatMap { NSImage(contentsOfFile: $0)?.cgImage(forProposedRect: nil, context: nil, hints: nil) }
+        let middle = coveredImage.flatMap { Measure.color(in: $0, at: CGPoint(x: $0.width / 2, y: $0.height / 2)) }
+        check(run.status == 0 && json["width"]?.intValue == Int(100 * scale) && json["height"]?.intValue == Int(50 * scale),
+              "capture window --rect takes part of it (\(json["width"] ?? nil)×\(json["height"] ?? nil), \(run.stderr.trimmingCharacters(in: .whitespacesAndNewlines)))")
+        check(middle.map { $0.red > 0.8 && $0.blue < 0.3 } == true, "a covered window comes out as itself, not what covers it (\(String(describing: middle)))")
+        check(stacking() == order, "the windows keep their order (\(order) → \(stacking()))")
+        check(NSWorkspace.shared.frontmostApplication == frontmost,
+              "the focus stays where it was (\(frontmost?.localizedName ?? "-") → \(NSWorkspace.shared.frontmostApplication?.localizedName ?? "-"))")
+        check(json["rect"]?.rect?.width == 100 && json["rect"]?.rect?.minX == (json["window"]?["frame"]?.rect?.minX ?? -1) + 20,
+              "the result says where that part is on screen")
+        run = try await shotdock(["capture", "window", "--id", String(covered.windowNumber), "--rect", "900,900,10,10", "--json"])
+        check(run.status == 1 && run.json?["error"]?["kind"] == "invalid_params", "a rect outside the window is refused")
+        covered.miniaturize(nil)
+        try await Task.sleep(for: .seconds(2.5))
+        run = try await shotdock(["capture", "window", "--id", String(covered.windowNumber), "--no-history", "--json"])
+        let minimised = run.json?["path"]?.stringValue.flatMap { NSImage(contentsOfFile: $0)?.cgImage(forProposedRect: nil, context: nil, hints: nil) }
+            .flatMap { Measure.color(in: $0, at: CGPoint(x: $0.width / 2, y: $0.height / 2)) }
+        check(run.status == 0 && minimised.map { $0.red > 0.8 && $0.blue < 0.3 } == true,
+              "a minimised window is captured without restoring it (\(run.json?["error"]?["message"] ?? nil))")
+        check(covered.isMiniaturized, "and it stays minimised")
+        covered.deminiaturize(nil)
+
         // Interactive: the user drags an area while the CLI waits.
         async let picked = shotdock(["capture", "area", "--interactive", "--json"])
         var waited = 0
